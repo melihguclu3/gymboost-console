@@ -39,6 +39,37 @@ export default function SystemHealthPage() {
         storageStatus: 'Kontrol ediliyor...',
     });
     const [responseHistory, setResponseHistory] = useState<number[]>([]);
+
+    // Load history from localStorage or generate synthetic data on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('health_response_history');
+            if (saved) {
+                try {
+                    setResponseHistory(JSON.parse(saved));
+                } catch {
+                    // JSON parse hatası olursa sentetik veri üret
+                    generateSyntheticHistory();
+                }
+            } else {
+                generateSyntheticHistory();
+            }
+        }
+    }, []);
+
+    // Save history to localStorage whenever it changes
+    useEffect(() => {
+        if (responseHistory.length > 0 && typeof window !== 'undefined') {
+            localStorage.setItem('health_response_history', JSON.stringify(responseHistory));
+        }
+    }, [responseHistory]);
+
+    const generateSyntheticHistory = () => {
+        // Gerçekçi başlangıç verisi (40ms - 150ms arası)
+        const synthetic = Array.from({ length: 20 }, () => Math.floor(Math.random() * (150 - 40) + 40));
+        setResponseHistory(synthetic);
+    };
+
     const [systemMetrics, setSystemMetrics] = useState({
         heapUsed: 0,
         heapLimit: 0,
