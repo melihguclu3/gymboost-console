@@ -99,6 +99,27 @@ export async function updateSession(request: NextRequest) {
             return NextResponse.redirect(new URL('/gate', request.url));
         }
 
+        // -----------------------------------------------------------------------
+        // 3. KATMAN: DESEN KİLİDİ (PATTERN LOCK)
+        // -----------------------------------------------------------------------
+        // Gate'i geçen kullanıcı ikinci bir biyometrik/desen doğrulamasına düşer.
+        const hasPatternAccess = request.cookies.get('master-pattern-access')?.value === 'granted';
+        const isPatternPage = path === '/verify-pattern';
+
+        if (!hasPatternAccess && !isPatternPage && !isMasterGate) {
+            return NextResponse.redirect(new URL('/verify-pattern', request.url));
+        }
+
+        if (isPatternPage && hasPatternAccess) {
+             return NextResponse.redirect(new URL('/login', request.url));
+        }
+        
+        if (isPatternPage) {
+            return supabaseResponse;
+        }
+
+        // -----------------------------------------------------------------------
+
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError) {
