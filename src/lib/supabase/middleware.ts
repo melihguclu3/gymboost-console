@@ -85,37 +85,36 @@ export async function updateSession(request: NextRequest) {
         const hasGateAccess = request.cookies.get('master-gate-access')?.value === 'granted';
 
         // Gate sayfasındaysak: Güvenlik önlemi olarak MEVCUT İZNİ SİL (Kilitle)
-        // Böylece sayfayı yenileyen veya geri gelen herkes tekrar şifre girmek zorunda kalır.
         if (isMasterGate) {
             if (hasGateAccess) {
-                // Cookie'yi silerek yanıt ver
                 supabaseResponse.cookies.delete('master-gate-access');
             }
             return supabaseResponse;
         }
 
-        if (!hasGateAccess && !isMasterGate) {
-            // Gate erişimi yoksa ve gate sayfasında değilse -> Gate'e yönlendir
+        // Gate erişimi yoksa ve gate sayfasında değilse -> Gate'e yönlendir
+        if (!hasGateAccess) {
             return NextResponse.redirect(new URL('/gate', request.url));
         }
 
         // -----------------------------------------------------------------------
         // 3. KATMAN: DESEN KİLİDİ (PATTERN LOCK)
         // -----------------------------------------------------------------------
-        // Gate'i geçen kullanıcı ikinci bir biyometrik/desen doğrulamasına düşer.
+        // BURAYA SADECE GATE'İ GEÇENLER GELEBİLİR
         const hasPatternAccess = request.cookies.get('master-pattern-access')?.value === 'granted';
         const isPatternPage = path === '/verify-pattern';
 
-        if (!hasPatternAccess && !isPatternPage && !isMasterGate) {
-            return NextResponse.redirect(new URL('/verify-pattern', request.url));
+        if (isPatternPage) {
+            // Desen sayfasındayken: Eğer zaten izni varsa login'e at
+            if (hasPatternAccess) {
+                return NextResponse.redirect(new URL('/login', request.url));
+            }
+            return supabaseResponse;
         }
 
-        if (isPatternPage && hasPatternAccess) {
-             return NextResponse.redirect(new URL('/login', request.url));
-        }
-        
-        if (isPatternPage) {
-            return supabaseResponse;
+        // Eğer desen izni yoksa desen sayfasına yönlendir
+        if (!hasPatternAccess) {
+            return NextResponse.redirect(new URL('/verify-pattern', request.url));
         }
 
         // -----------------------------------------------------------------------

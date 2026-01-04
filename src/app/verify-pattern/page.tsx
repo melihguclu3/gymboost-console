@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui';
 import { PatternLock } from '@/components/PatternLock';
 import { verifyPattern } from './actions';
-import { Grid3X3, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Grid3X3, LockKeyhole, ShieldCheck, Fingerprint } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function PatternVerifyPage() {
     const router = useRouter();
@@ -20,9 +21,11 @@ export default function PatternVerifyPage() {
             const result = await verifyPattern(pattern);
             
             if (result.success) {
-                // Başarılı! Login'e git
-                router.push('/login');
-                router.refresh();
+                // Success animation delay
+                setTimeout(() => {
+                    router.push('/login');
+                    router.refresh();
+                }, 300);
             } else {
                 setError(true);
             }
@@ -34,21 +37,61 @@ export default function PatternVerifyPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Effects */}
-            <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] bg-blue-900/10 blur-[120px] rounded-full" />
-            <div className="absolute bottom-[-20%] left-[-20%] w-[50%] h-[50%] bg-purple-900/10 blur-[120px] rounded-full" />
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden font-mono">
+            {/* --- Cyberpunk Background Layers --- */}
             
-            <Card className="w-full max-w-md bg-zinc-950/80 backdrop-blur-xl border-white/5 shadow-2xl rounded-[2.5rem] p-8 flex flex-col items-center text-center relative z-10">
-                <div className="mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <Grid3X3 className="w-8 h-8 text-zinc-500" />
+            {/* 1. Hex Pattern */}
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none" />
+            
+            {/* 2. Gradient Orbs */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(249,115,22,0.15),transparent_50%)] pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-900/10 blur-[100px] rounded-full pointer-events-none" />
+
+            {/* --- Main Card --- */}
+            <Card className={cn(
+                "w-full max-w-md bg-zinc-950/70 backdrop-blur-3xl border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,1)] rounded-[2.5rem] p-8 flex flex-col items-center text-center relative z-10 transition-colors duration-500",
+                error && "border-red-500/30 bg-red-950/20"
+            )}>
+                {/* Header Section */}
+                <div className="mb-8 w-full">
+                    <div className="flex items-center justify-between px-2 mb-6">
+                         <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Geçiş İzni: Onaylandı</span>
+                         </div>
+                         <LockKeyhole className="w-4 h-4 text-zinc-600" />
                     </div>
-                    <h1 className="text-xl font-black text-white tracking-tight">Güvenlik Deseni</h1>
-                    <p className="text-zinc-500 text-xs mt-2 font-medium">Lütfen 4x4 güvenlik desenini çizin.</p>
+
+                    <div className="relative">
+                        <div className={cn(
+                            "w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg",
+                            error 
+                                ? "bg-red-500/10 border-red-500/50 shadow-red-500/20" 
+                                : "bg-gradient-to-br from-zinc-800 to-zinc-900 border-white/10 shadow-orange-500/5"
+                        )}>
+                            <Fingerprint className={cn(
+                                "w-8 h-8 transition-colors",
+                                error ? "text-red-500" : "text-zinc-400"
+                            )} />
+                        </div>
+                        {error && (
+                            <div className="absolute -right-4 top-0 bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider animate-bounce">
+                                Geçersiz Desen
+                            </div>
+                        )}
+                    </div>
+                    
+                    <h1 className="text-xl font-black text-white tracking-tight uppercase">
+                        Biyometrik Doğrulama
+                    </h1>
+                    <p className="text-zinc-500 text-[10px] mt-2 font-medium tracking-wide uppercase">
+                        16 noktalı güvenlik desenini çizin
+                    </p>
                 </div>
 
-                <div className="w-full flex justify-center py-4">
+                {/* The Pattern Lock Component */}
+                <div className="w-full flex justify-center py-2 relative">
+                    <div className="absolute inset-0 bg-orange-500/5 blur-3xl rounded-full pointer-events-none" />
                     <PatternLock 
                         onComplete={handlePatternComplete} 
                         error={error}
@@ -56,9 +99,12 @@ export default function PatternVerifyPage() {
                     />
                 </div>
 
-                <div className="mt-8 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
-                    <ShieldCheck className="w-3 h-3" />
-                    Askeri Düzey Şifreleme (16 Nokta)
+                {/* Footer Info */}
+                <div className="mt-8 flex items-center gap-3 py-2 px-4 rounded-full bg-white/5 border border-white/5">
+                    <ShieldCheck className="w-3 h-3 text-orange-500" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                        Seviye 4 Güvenlik İzni
+                    </span>
                 </div>
             </Card>
         </div>

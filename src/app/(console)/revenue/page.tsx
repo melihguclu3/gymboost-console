@@ -20,6 +20,7 @@ import {
     Clock,
     Zap
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface GlobalTransaction {
     id: string;
@@ -41,9 +42,10 @@ export default function GlobalRevenuePage() {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalRevenue: 0,
-        monthlyGrowth: 12.5,
+        monthlyGrowth: 0,
         pendingPayments: 0,
-        gymCount: 0
+        gymCount: 0,
+        topNodes: [] as { name: string, amount: number }[]
     });
 
     const supabase = createClient();
@@ -55,18 +57,11 @@ export default function GlobalRevenuePage() {
     async function loadFinancialData() {
         setLoading(true);
         try {
-            // Tüm ödemeleri çek
             const { data, error } = await supabase
                 .from('payments')
                 .select(`
-                    id,
-                    amount,
-                    payment_method,
-                    payment_date,
-                    status,
-                    description,
-                    gyms (name),
-                    users (full_name)
+                    id, amount, payment_method, payment_date, status, description,
+                    gyms (name), users (full_name)
                 `)
                 .order('payment_date', { ascending: false });
 
@@ -74,20 +69,46 @@ export default function GlobalRevenuePage() {
 
             if (data) {
                 setTransactions(data as any);
-                const total = data.reduce((sum, p) => sum + (p.amount || 0), 0);
+                const completedPayments = data.filter(p => p.status === 'completed');
+                const total = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
                 
-                // Salon sayısını bul
-                const uniqueGyms = new Set(data.map(p => (p as any).gyms?.name)).size;
+                // Calculate Growth (Current Month vs Last Month)
+                const now = new Date();
+                const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                
+                const thisMonthRev = completedPayments
+                    .filter(p => new Date(p.payment_date) >= thisMonthStart)
+                    .reduce((sum, p) => sum + p.amount, 0);
+                
+                const lastMonthRev = completedPayments
+                    .filter(p => new Date(p.payment_date) >= lastMonthStart && new Date(p.payment_date) < thisMonthStart)
+                    .reduce((sum, p) => sum + p.amount, 0);
+                
+                const growth = lastMonthRev === 0 ? 100 : Math.round(((thisMonthRev - lastMonthRev) / lastMonthRev) * 100);
+
+                // Aggregated Node Ranking
+                const nodeMap: Record<string, number> = {};
+                completedPayments.forEach(p => {
+                    const name = (p as any).gyms?.name || 'Unknown Node';
+                    nodeMap[name] = (nodeMap[name] || 0) + p.amount;
+                });
+
+                const topNodes = Object.entries(nodeMap)
+                    .map(([name, amount]) => ({ name, amount }))
+                    .sort((a, b) => b.amount - a.amount)
+                    .slice(0, 3);
 
                 setStats({
                     totalRevenue: total,
-                    monthlyGrowth: 12.5, // Simüle
+                    monthlyGrowth: growth,
                     pendingPayments: data.filter(p => p.status === 'pending').length,
-                    gymCount: uniqueGyms
+                    gymCount: new Set(data.map(p => (p as any).gyms?.name)).size,
+                    topNodes
                 });
             }
         } catch (err) {
-            console.error('Finansal veri hatası:', err);
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -114,156 +135,165 @@ export default function GlobalRevenuePage() {
     }
 
     return (
-        <div className="space-y-8 text-left text-white">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-white flex items-center gap-3">
-                        <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl shadow-emerald-500/20">
-                            <TrendingUp className="w-8 h-8 text-white" />
+        <div className="space-y-12 pb-20 text-left text-white">
+            {/* --- SURGICAL UNIFIED HEADER --- */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10 border-b border-white/[0.04] pb-12">
+                <div className="flex items-start gap-8">
+                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] shadow-lg shadow-emerald-500/5 relative overflow-hidden group">
+                        <TrendingUp className="w-10 h-10 text-emerald-500 relative z-10 group-hover:scale-110 transition-transform" />
+                        <div className="absolute inset-0 bg-emerald-500/5 animate-pulse" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-4 mb-3">
+                            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
+                                GELİR <span className="text-emerald-500">AKIŞI</span>
+                            </h1>
+                            <div className="flex items-center gap-2.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/20 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Finans Motoru: Kararlı</span>
+                            </div>
                         </div>
-                        Finansal Kontrol Merkezi
-                    </h1>
-                    <p className="text-zinc-400 mt-1 font-medium ml-14">Tüm ağın gelir akışı ve ödeme raporları</p>
+                        <div className="flex items-center gap-6 text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">
+                            <div className="flex items-center gap-2 font-mono">
+                                <Wallet className="w-3.5 h-3.5" /> BRÜT_TOPLAM: {formatCurrency(stats.totalRevenue)}
+                            </div>
+                            <div className="flex items-center gap-2 font-mono">
+                                <Building2 className="w-3.5 h-3.5" /> AKTİF_SALONLAR: {stats.gymCount}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="secondary" className="bg-zinc-900 border-white/5 rounded-xl font-bold h-12">
-                        <Download className="w-4 h-4 mr-2" /> Excel İndir
+
+                <div className="flex items-center gap-3">
+                    <div className="px-6 py-4 bg-zinc-950/40 border border-white/[0.04] rounded-2xl text-right group hover:border-emerald-500/30 transition-all shadow-2xl relative overflow-hidden">
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1 group-hover:text-emerald-500 transition-colors font-mono">Büyüme Oranı</p>
+                        <p className="text-2xl font-black text-white tabular-nums font-mono">+{stats.monthlyGrowth}<span className="text-[10px] text-zinc-800 ml-1 font-mono uppercase">%</span></p>
+                    </div>
+                    <Button className="bg-zinc-950 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 rounded-xl h-14 px-8 font-black text-[10px] tracking-[0.3em] uppercase transition-all">
+                        <Download className="w-4 h-4 mr-3" /> RAPORLARI DIŞA AKTAR
                     </Button>
                 </div>
             </div>
 
-            {/* Financial Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-6 bg-zinc-950/50 border-white/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <DollarSign className="w-16 h-16 text-emerald-500" />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-1">Toplam Brüt Gelir</p>
-                        <h3 className="text-3xl font-black text-white tracking-tighter">{formatCurrency(stats.totalRevenue)}</h3>
-                        <div className="flex items-center gap-1 mt-2 text-emerald-500 text-[10px] font-bold uppercase">
-                            <ArrowUpRight className="w-3 h-3" /> %{stats.monthlyGrowth} Büyüme
+            {/* --- FINANCIAL BENTO GRID --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[
+                    { label: 'Brüt İşlem Hacmi', val: formatCurrency(stats.totalRevenue), sub: 'Toplam Net Hacim', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/5', border: 'border-emerald-500/20' },
+                    { label: 'Aktif Salon Payı', val: stats.gymCount, sub: 'Ödeme Yapan İşletmeler', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/5', border: 'border-blue-500/20' },
+                    { label: 'Tahsilat Kuyruğu', val: stats.pendingPayments, sub: 'Onay Bekleyen İşlemler', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/5', border: 'border-amber-500/20' },
+                    { label: 'İşlem Başına Gelir', val: formatCurrency(stats.totalRevenue / (transactions.length || 1)), sub: 'Ortalama İşlem Değeri', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-500/5', border: 'border-orange-500/20' },
+                ].map((s, i) => (
+                    <Card key={i} className={cn("p-8 bg-zinc-950/20 border-white/[0.04] relative overflow-hidden group hover:border-emerald-500/20 transition-all rounded-[2rem]", s.border)}>
+                        <div className="flex items-center justify-between mb-8 relative z-10">
+                            <div className={cn("p-3.5 rounded-2xl border transition-all duration-500", s.bg, s.border)}>
+                                <s.icon className={cn("w-6 h-6", s.color)} />
+                            </div>
+                            <div className="flex gap-0.5">
+                                {[1,2,3].map(j => <div key={j} className="w-0.5 h-3 bg-zinc-800 group-hover:bg-emerald-500/40 transition-colors" />)}
+                            </div>
                         </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-zinc-950/50 border-white/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <Building2 className="w-16 h-16 text-blue-500" />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-1">Aktif Salon Sayısı</p>
-                        <h3 className="text-3xl font-black text-white tracking-tighter">{stats.gymCount}</h3>
-                        <div className="flex items-center gap-1 mt-2 text-zinc-500 text-[10px] font-bold uppercase">
-                            Ödeme Yapan İşletmeler
+                        <div className="relative z-10">
+                            <p className="text-3xl font-black text-white tracking-tighter tabular-nums font-mono">{s.val}</p>
+                            <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mt-1.5">{s.label}</p>
                         </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-zinc-950/50 border-white/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <Clock className="w-16 h-16 text-amber-500" />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-1">Tahsilat Bekleyen</p>
-                        <h3 className="text-3xl font-black text-white tracking-tighter">{stats.pendingPayments}</h3>
-                        <div className="flex items-center gap-1 mt-2 text-amber-500 text-[10px] font-bold uppercase">
-                            Onay Bekleyen İşlemler
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-zinc-950/50 border-white/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <Zap className="w-16 h-16 text-orange-500" />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-1">Ortalama İşlem</p>
-                        <h3 className="text-3xl font-black text-white tracking-tighter">
-                            {formatCurrency(stats.totalRevenue / (transactions.length || 1))}
-                        </h3>
-                        <div className="flex items-center gap-1 mt-2 text-zinc-500 text-[10px] font-bold uppercase">
-                            İşlem Başına Gelir
-                        </div>
-                    </div>
-                </Card>
+                        <p className="text-[9px] font-mono font-black text-zinc-800 uppercase tracking-widest mt-8 border-t border-white/[0.04] pt-5 group-hover:text-zinc-600 transition-colors">{s.sub}</p>
+                    </Card>
+                ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Transaction List */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-white tracking-tight">Son Global İşlemler</h2>
-                        <div className="relative w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                            <Input placeholder="İşlem ara..." className="pl-10 h-10 bg-zinc-900 border-white/5 text-xs" />
+                <div className="lg:col-span-2 space-y-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10 border-b border-white/[0.04] pb-10">
+                        <div className="flex items-center gap-5">
+                            <div className="p-3 bg-zinc-950 border border-white/5 rounded-2xl text-zinc-600">
+                                <CreditCard className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-white tracking-tighter uppercase">
+                                    KÜRESEL İŞLEM GÜNLÜĞÜ
+                                </h2>
+                                <p className="text-[10px] font-mono font-black text-zinc-700 uppercase tracking-[0.3em] mt-1">AKIŞ AKTİF: SON 10 İŞLEM</p>
+                            </div>
+                        </div>
+                        <div className="relative w-full sm:w-[350px] group">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-emerald-500 transition-colors" />
+                            <input 
+                                placeholder="İŞLEM_VEYA_VARLIK_ARA..."
+                                className="w-full pl-14 pr-6 h-16 bg-zinc-950/40 border border-white/[0.04] rounded-2xl text-[11px] font-mono font-black uppercase tracking-widest focus:outline-none focus:border-emerald-500/30 transition-all placeholder:text-zinc-800"
+                            />
                         </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {transactions.slice(0, 10).map((t) => (
-                            <Card key={t.id} padding="none" className="bg-zinc-900/20 border-white/5 hover:border-emerald-500/20 transition-all group">
-                                <div className="flex items-center p-4 gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-white/5 shrink-0 ${t.amount > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                            <div 
+                                key={t.id} 
+                                className="bg-[#050505] border border-white/[0.04] rounded-[1.5rem] hover:border-emerald-500/20 hover:bg-zinc-900/10 transition-all group overflow-hidden relative p-6"
+                            >
+                                <div className="flex items-center gap-6">
+                                    <div className={cn(
+                                        "w-14 h-14 rounded-xl flex items-center justify-center border transition-all duration-500 group-hover:scale-105 shadow-inner",
+                                        t.amount > 0 ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/10' : 'bg-red-500/5 text-red-500 border-red-500/10'
+                                    )}>
                                         {getMethodIcon(t.payment_method)}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-bold text-white truncate">{t.users?.full_name || 'İsimsiz Üye'}</p>
-                                            <span className="px-1.5 py-0.5 bg-white/5 rounded text-[8px] font-black text-zinc-500 uppercase">{t.gyms?.name}</span>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <p className="text-base font-black text-white truncate uppercase tracking-tight">{t.users?.full_name || 'ANONİM VARLIK'}</p>
+                                            <span className="px-2 py-0.5 bg-white/[0.02] border border-white/[0.05] rounded text-[8px] font-mono font-black text-zinc-600 uppercase tracking-widest">{t.gyms?.name}</span>
                                         </div>
-                                        <p className="text-[10px] text-zinc-500 mt-0.5">{t.description || 'Üyelik Ödemesi'}</p>
+                                        <p className="text-[10px] font-mono font-bold text-zinc-600 uppercase tracking-widest">{t.description || 'SİSTEM ABONELİK YENİLEME'}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm font-black text-white">{formatCurrency(t.amount)}</p>
-                                        <p className="text-[9px] text-zinc-600 font-bold uppercase">{new Date(t.payment_date).toLocaleDateString('tr-TR')}</p>
+                                        <p className="text-lg font-black text-white tabular-nums font-mono">{formatCurrency(t.amount)}</p>
+                                        <p className="text-[9px] font-mono font-black text-zinc-700 uppercase tracking-widest mt-1">TARİH::{new Date(t.payment_date).toLocaleDateString('tr-TR')}</p>
                                     </div>
                                 </div>
-                            </Card>
+                            </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Top Gyms Sidebar */}
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-white tracking-tight">En Çok Kazandıranlar</h2>
-                    <Card className="bg-zinc-950 border-white/5 p-6">
-                        <div className="space-y-6">
-                            {/* Bu kısım normalde grup edilerek hesaplanmalı, şimdilik örnek */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500 font-black text-xs">1</div>
-                                    <span className="text-sm font-bold text-white">Elite Fitness</span>
+                {/* Top Nodes Sidebar */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-4">
+                        <Banknote className="w-5 h-5 text-zinc-700" />
+                        <h2 className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.3em]">EN ÇOK KAZANDIRANLAR</h2>
+                    </div>
+                    <Card className="bg-[#020202] border-white/[0.04] p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                        <div className="space-y-6 relative z-10">
+                            {stats.topNodes.length > 0 ? stats.topNodes.map((gym, i) => (
+                                <div key={i} className="flex items-center justify-between group cursor-pointer">
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs font-mono border border-white/5 group-hover:scale-110 transition-transform",
+                                            i === 0 ? "bg-orange-500/10 text-orange-500" : "bg-white/5 text-zinc-500"
+                                        )}>
+                                            {i + 1}
+                                        </div>
+                                        <span className="text-sm font-black text-zinc-400 group-hover:text-white transition-colors uppercase tracking-tight">{gym.name}</span>
+                                    </div>
+                                    <span className="text-sm font-black text-emerald-500 font-mono tabular-nums">{formatCurrency(gym.amount)}</span>
                                 </div>
-                                <span className="text-sm font-black text-emerald-500">12.450 ₺</span>
-                            </div>
-                            <div className="flex items-center justify-between opacity-80">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 font-black text-xs">2</div>
-                                    <span className="text-sm font-bold text-white">Gold Gym</span>
-                                </div>
-                                <span className="text-sm font-black text-emerald-500">9.800 ₺</span>
-                            </div>
-                            <div className="flex items-center justify-between opacity-60">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-500 font-black text-xs">3</div>
-                                    <span className="text-sm font-bold text-white">Power Zone</span>
-                                </div>
-                                <span className="text-sm font-black text-emerald-500">7.200 ₺</span>
-                            </div>
+                            )) : (
+                                <div className="text-center py-10 opacity-20 italic text-xs uppercase tracking-widest">İşlem verisi yok</div>
+                            )}
                         </div>
 
-                        <Button className="w-full mt-8 bg-zinc-900 border border-white/5 hover:bg-white/5 text-zinc-400 font-bold text-xs h-11 rounded-xl">
-                            Tüm Listeyi Gör
+                        <Button className="w-full mt-10 bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.05] text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.3em] h-14 rounded-2xl transition-all">
+                            TAM HACİM RAPORU
                         </Button>
                     </Card>
 
                     {/* Quick Insight */}
-                    <Card className="bg-gradient-to-br from-emerald-600/20 to-transparent border-emerald-500/20 p-6">
-                        <h4 className="text-xs font-black text-emerald-500 uppercase tracking-widest mb-2">Finansal Özet</h4>
-                        <p className="text-sm text-zinc-300 leading-relaxed font-medium">
-                            Bu ay nakit ödemeler geçen aya göre %15 azaldı, kredi kartı kullanımı ise %22 arttı. Dijitalleşme hızlanıyor.
+                    <Card className="bg-emerald-500/[0.02] border-emerald-500/20 p-8 rounded-[2.5rem] relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Zap className="w-16 h-16 text-emerald-500" />
+                        </div>
+                        <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-4">Finansal Zeka</h4>
+                        <p className="text-xs text-zinc-500 leading-relaxed font-medium uppercase tracking-tight">
+                            Nakit işlemler azalırken, <span className="text-white">API tabanlı ödemeler</span> artış gösteriyor. Dijital salon entegrasyonu başarılı.
                         </p>
                     </Card>
                 </div>

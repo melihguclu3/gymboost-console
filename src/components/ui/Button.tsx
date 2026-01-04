@@ -1,8 +1,9 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'glass';
     size?: 'sm' | 'md' | 'lg' | 'icon';
     isLoading?: boolean;
     icon?: React.ReactNode;
@@ -18,26 +19,27 @@ export function Button({
     disabled,
     ...props
 }: ButtonProps) {
-    const baseStyles = "inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] cursor-pointer";
+    const baseStyles = "inline-flex items-center justify-center font-bold tracking-widest uppercase transition-all duration-300 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.96] cursor-pointer rounded-2xl";
 
     const variants = {
-        primary: "bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white shadow-lg shadow-orange-500/20 border border-transparent",
-        secondary: "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 hover:border-zinc-600 shadow-sm",
-        outline: "bg-transparent border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 hover:bg-zinc-800/50",
-        ghost: "bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-800/50",
-        danger: "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30"
+        primary: "bg-orange-500 text-white shadow-[0_0_20px_rgba(249,115,22,0.2)] hover:shadow-[0_0_25px_rgba(249,115,22,0.4)] hover:bg-orange-400 border border-orange-400/20 hover:scale-[1.02]",
+        secondary: "bg-white/5 text-zinc-400 hover:text-white border border-white/10 hover:border-orange-500/30 hover:bg-orange-500/5 hover:scale-[1.02]",
+        outline: "bg-transparent border border-white/10 text-zinc-500 hover:text-white hover:border-white/30 hover:bg-white/5",
+        ghost: "bg-transparent text-zinc-500 hover:text-white hover:bg-white/5",
+        danger: "bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 hover:border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]",
+        glass: "bg-zinc-950/40 backdrop-blur-md border border-white/5 text-zinc-400 hover:text-orange-500 hover:border-orange-500/30 hover:bg-zinc-900/60"
     };
 
     const sizes = {
-        sm: "h-8 px-3 text-xs rounded-lg",
-        md: "h-10 px-4 text-sm rounded-xl",
-        lg: "h-12 px-6 text-base rounded-xl",
-        icon: "h-10 w-10 p-0 rounded-xl"
+        sm: "h-9 px-4 text-[10px]",
+        md: "h-12 px-6 text-[11px]",
+        lg: "h-14 px-8 text-xs",
+        icon: "h-12 w-12 p-0"
     };
 
     return (
         <button
-            className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+            className={cn(baseStyles, variants[variant], sizes[size], className)}
             disabled={disabled || isLoading}
             {...props}
         >

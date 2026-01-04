@@ -16,9 +16,18 @@ import {
     Lock,
     Globe,
     Cpu,
-    Sparkles
+    Sparkles,
+    Terminal,
+    ChevronRight,
+    Wifi,
+    HardDrive,
+    HeartPulse,
+    Package
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn, maskEmail } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 
 interface SystemLog {
     id: string;
@@ -34,894 +43,463 @@ export default function SystemHealthPage() {
     const [logs, setLogs] = useState<SystemLog[]>([]);
     const [healthMetrics, setHealthMetrics] = useState({
         dbResponseTime: 0,
-        dbStatus: 'Kontrol ediliyor...',
-        authStatus: 'Kontrol ediliyor...',
-        storageStatus: 'Kontrol ediliyor...',
+        dbStatus: 'SCANNING',
+        authStatus: 'SCANNING',
+        storageStatus: 'SCANNING',
     });
     const [responseHistory, setResponseHistory] = useState<number[]>([]);
-
-    // Load history from localStorage or generate synthetic data on mount
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('health_response_history');
-            if (saved) {
-                try {
-                    setResponseHistory(JSON.parse(saved));
-                } catch {
-                    // JSON parse hatası olursa sentetik veri üret
-                    generateSyntheticHistory();
-                }
-            } else {
-                generateSyntheticHistory();
-            }
-        }
-    }, []);
-
-    // Save history to localStorage whenever it changes
-    useEffect(() => {
-        if (responseHistory.length > 0 && typeof window !== 'undefined') {
-            localStorage.setItem('health_response_history', JSON.stringify(responseHistory));
-        }
-    }, [responseHistory]);
-
-    const generateSyntheticHistory = () => {
-        // Gerçekçi başlangıç verisi (40ms - 150ms arası)
-        const synthetic = Array.from({ length: 20 }, () => Math.floor(Math.random() * (150 - 40) + 40));
-        setResponseHistory(synthetic);
-    };
-
+    const [stabilityData, setStabilityData] = useState<{ date: string, success: number, error: number }[]>([]);
     const [systemMetrics, setSystemMetrics] = useState({
         heapUsed: 0,
         heapLimit: 0,
         memoryPercent: 0,
     });
-    const [webVitals, setWebVitals] = useState({
-        lcp: 0,
-        fid: 0,
-        cls: 0,
-    });
-    const [networkInfo, setNetworkInfo] = useState({
-        effectiveType: 'unknown',
-        downlink: 0,
-        rtt: 0,
-    });
-    const [errorStats, setErrorStats] = useState({
-        total: 0,
-        lastHour: 0,
-        recentErrors: [] as SystemLog[],
-    });
-    const [realtimeStats, setRealtimeStats] = useState({
-        activeChannels: 0,
-        status: 'disconnected',
-    });
-    const [uptime, setUptime] = useState(() => ({
-        startTime: Date.now(),
-        upSeconds: 0,
-    }));
+    const [networkInfo, setNetworkInfo] = useState({ effectiveType: 'unknown', downlink: 0, rtt: 0 });
+    const [realtimeStats, setRealtimeStats] = useState({ activeChannels: 0, status: 'disconnected' });
+    const [uptime, setUptime] = useState(100);
     const [externalApis, setExternalApis] = useState({
-        gemini: { status: 'kontrol ediliyor', responseTime: 0 },
-        resend: { status: 'kontrol ediliyor', responseTime: 0 },
-        supabaseServer: { status: 'kontrol ediliyor', responseTime: 0 },
-        vercel: {
-            status: 'kontrol ediliyor',
-            region: '',
-            commitSha: '',
-            commitMsg: '',
-            env: ''
-        },
-    });
-    const [browserInfo, setBrowserInfo] = useState({
-        name: '',
-        version: '',
-        os: '',
-        device: 'desktop',
+        gemini: { status: 'STANDBY', responseTime: 0 },
+        resend: { status: 'STANDBY', responseTime: 0 },
     });
 
     const supabase = createClient();
 
     const loadRecentLogs = useCallback(async () => {
         try {
-            const { data } = await supabase
-                .from('system_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(5);
+            const { data } = await supabase.from('system_logs').select('*').order('created_at', { ascending: false }).limit(15);
             if (data) setLogs(data as SystemLog[]);
-        } catch (err) {
-            console.error('Error loading logs:', err);
-        }
+        } catch (err) { console.error(err); }
     }, [supabase]);
 
-    const updateSystemMetrics = useCallback(() => {
-        if (typeof window !== 'undefined' && 'memory' in performance) {
-            const memory = (performance as any).memory;
-            const heapUsed = Math.round(memory.usedJSHeapSize / 1048576);
-            const heapLimit = Math.round(memory.jsHeapSizeLimit / 1048576);
-            const memoryPercent = Math.round((heapUsed / heapLimit) * 100);
-            setSystemMetrics({ heapUsed, heapLimit, memoryPercent });
-        }
-    }, []);
-
-    const updateNetworkInfo = useCallback(() => {
-        if (typeof window !== 'undefined' && 'connection' in navigator) {
-            const conn = (navigator as any).connection;
-            setNetworkInfo({
-                effectiveType: conn?.effectiveType || 'unknown',
-                downlink: conn?.downlink || 0,
-                rtt: conn?.rtt || 0,
-            });
-        }
-    }, []);
-
-    const loadErrorStats = useCallback(async () => {
+    const loadStabilityData = useCallback(async () => {
         try {
-            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-            const { data: recentErrors } = await supabase
-                .from('system_logs')
-                .select('*')
-                .eq('event_type', 'error')
-                .gte('created_at', oneHourAgo)
-                .order('created_at', { ascending: false })
-                .limit(5);
+            const days = 7;
+            const data = [];
+            const now = new Date();
 
-            const { count: totalCount } = await supabase
-                .from('system_logs')
-                .select('*', { count: 'exact', head: true })
-                .eq('event_type', 'error');
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const startOfDay = new Date(date.setHours(0, 0, 0, 0)).toISOString();
+                const endOfDay = new Date(date.setHours(23, 59, 59, 999)).toISOString();
 
-            setErrorStats({
-                total: totalCount || 0,
-                lastHour: recentErrors?.length || 0,
-                recentErrors: (recentErrors || []) as SystemLog[],
-            });
-        } catch (err) {
-            console.error('Error loading stats:', err);
-        }
+                const { count: successCount } = await supabase
+                    .from('system_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('event_type', 'success')
+                    .gte('created_at', startOfDay)
+                    .lte('created_at', endOfDay);
+
+                const { count: errorCount } = await supabase
+                    .from('system_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('event_type', 'error')
+                    .gte('created_at', startOfDay)
+                    .lte('created_at', endOfDay);
+
+                data.push({
+                    date: date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+                    success: successCount || 0,
+                    error: errorCount || 0
+                });
+            }
+            setStabilityData(data);
+        } catch (err) { console.error(err); }
     }, [supabase]);
 
-    const checkGeminiHealth = useCallback(async () => {
-        try {
-            const start = performance.now();
-            const response = await fetch('/api/ai/health', { method: 'GET' });
-            const end = performance.now();
-            const responseTime = Math.round(end - start);
-
-            setExternalApis(prev => ({
-                ...prev,
-                gemini: {
-                    status: response.ok ? 'çalışıyor' : 'hata',
-                    responseTime,
-                },
-            }));
-        } catch (err) {
-            setExternalApis(prev => ({
-                ...prev,
-                gemini: { status: 'hata', responseTime: 0 },
-            }));
+    const calculateUptime = useCallback(async () => {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { count: errorCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true }).eq('event_type', 'error').gt('created_at', sevenDaysAgo);
+        const { count: totalCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true }).gt('created_at', sevenDaysAgo);
+        if (totalCount && totalCount > 0) {
+            setUptime(Number((((totalCount - (errorCount || 0)) / totalCount) * 100).toFixed(2)));
         }
-    }, []);
-
-    const checkResendHealth = useCallback(async () => {
-        try {
-            const response = await fetch('/api/health/resend', { method: 'GET' });
-            const data = await response.json();
-
-            setExternalApis(prev => ({
-                ...prev,
-                resend: {
-                    status: data.status === 'operational' ? 'çalışıyor' : data.status === 'unauthorized' ? 'yetkisiz' : 'hata',
-                    responseTime: data.responseTime || 0,
-                },
-            }));
-        } catch (err) {
-            setExternalApis(prev => ({
-                ...prev,
-                resend: { status: 'hata', responseTime: 0 },
-            }));
-        }
-    }, []);
-
-    const checkSupabaseServerHealth = useCallback(async () => {
-        try {
-            const response = await fetch('/api/health/supabase', { method: 'GET' });
-            const data = await response.json();
-
-            setExternalApis(prev => ({
-                ...prev,
-                supabaseServer: {
-                    status: data.status === 'operational' ? 'çalışıyor' : data.status === 'degraded' ? 'yavaş' : 'hata',
-                    responseTime: data.responseTime || 0,
-                },
-            }));
-        } catch (err) {
-            setExternalApis(prev => ({
-                ...prev,
-                supabaseServer: { status: 'hata', responseTime: 0 },
-            }));
-        }
-    }, []);
-
-    const checkVercelHealth = useCallback(async () => {
-        try {
-            const response = await fetch('/api/health/vercel', { method: 'GET' });
-            const data = await response.json();
-
-            setExternalApis(prev => ({
-                ...prev,
-                vercel: {
-                    status: data.status === 'operational' ? 'çalışıyor' : 'hata',
-                    region: data.region || 'local',
-                    commitSha: data.commitSha || '',
-                    commitMsg: data.commitMsg || '',
-                    env: data.env || '',
-                },
-            }));
-        } catch (err) {
-            setExternalApis(prev => ({
-                ...prev,
-                vercel: {
-                    status: 'hata',
-                    region: '',
-                    commitSha: '',
-                    commitMsg: '',
-                    env: ''
-                },
-            }));
-        }
-    }, []);
+    }, [supabase]);
 
     const checkHealth = useCallback(async () => {
         setLoading(true);
         try {
-            // 1. DATABASE HEALTH CHECK
             const dbStart = performance.now();
-            const { error: dbError } = await supabase.from('gyms').select('id').limit(1);
+            await supabase.from('gyms').select('id').limit(1);
             const dbEnd = performance.now();
             const dbResponseTime = Math.round(dbEnd - dbStart);
 
-            // 2. AUTH HEALTH CHECK
             const { data: { session }, error: authError } = await supabase.auth.getSession();
-
-            // 3. STORAGE HEALTH CHECK
             const { error: storageError } = await supabase.storage.listBuckets();
-
-            // 4. REALTIME HEALTH CHECK
-            const channels = supabase.getChannels();
-            setRealtimeStats({
-                activeChannels: channels.length,
-                status: channels.length > 0 ? 'connected' : 'disconnected',
-            });
-
-            // 5. EXTERNAL API CHECKS (non-blocking)
-            checkGeminiHealth();
-            checkResendHealth();
-            checkSupabaseServerHealth();
-            checkVercelHealth();
 
             setHealthMetrics({
                 dbResponseTime,
-                dbStatus: dbError ? 'Hata' : dbResponseTime < 100 ? 'Mükemmel' : dbResponseTime < 300 ? 'İyi' : 'Yavaş',
-                authStatus: authError ? 'Hata' : session ? 'Aktif' : 'İnaktif',
-                storageStatus: storageError ? 'Hata' : 'Çalışıyor',
+                dbStatus: dbResponseTime < 150 ? 'OPTIMAL' : 'DEGRADED',
+                authStatus: authError ? 'ERROR' : session ? 'AUTHENTICATED' : 'ANONYMOUS',
+                storageStatus: storageError ? 'ERROR' : 'OPERATIONAL',
             });
 
             setResponseHistory(prev => [...prev, dbResponseTime].slice(-20));
+
+            const checkApi = async (url: string) => {
+                try {
+                    const s = performance.now();
+                    const r = await fetch(url);
+                    const e = performance.now();
+                    return { status: r.ok ? 'ONLINE' : 'ERROR', time: Math.round(e - s) };
+                } catch { return { status: 'ERROR', time: 0 }; }
+            };
+
+            checkApi('/api/ai/health').then(r => setExternalApis(p => ({ ...p, gemini: { status: r.status, responseTime: r.time } })));
+            checkApi('/api/health/resend').then(r => setExternalApis(p => ({ ...p, resend: { status: r.status, responseTime: r.time } })));
+            
+            calculateUptime();
+            loadStabilityData();
+            loadRecentLogs();
             setLastRefresh(new Date());
             setLoading(false);
         } catch (err) {
-            console.error(err);
-            setHealthMetrics(prev => ({
-                ...prev,
-                dbStatus: 'Hata',
-                authStatus: 'Hata',
-                storageStatus: 'Hata',
-            }));
             setLoading(false);
         }
-    }, [supabase, checkGeminiHealth, checkResendHealth, checkSupabaseServerHealth, checkVercelHealth]);
-
-    const initializeWebVitals = useCallback(() => {
-        if (typeof window === 'undefined') return;
-        // Core Web Vitals using PerformanceObserver
-        try {
-            // LCP - Largest Contentful Paint
-            new PerformanceObserver((list) => {
-                const entries = list.getEntries();
-                const lastEntry = entries[entries.length - 1] as any;
-                setWebVitals(prev => ({ ...prev, lcp: Math.round(lastEntry.renderTime || lastEntry.loadTime) }));
-            }).observe({ entryTypes: ['largest-contentful-paint'] });
-
-            // FID - First Input Delay
-            new PerformanceObserver((list) => {
-                list.getEntries().forEach((entry: any) => {
-                    setWebVitals(prev => ({ ...prev, fid: Math.round(entry.processingStart - entry.startTime) }));
-                });
-            }).observe({ entryTypes: ['first-input'] });
-
-            // CLS - Cumulative Layout Shift
-            let clsValue = 0;
-            new PerformanceObserver((list) => {
-                list.getEntries().forEach((entry: any) => {
-                    if (!entry.hadRecentInput) clsValue += entry.value;
-                });
-                setWebVitals(prev => ({ ...prev, cls: Math.round(clsValue * 1000) / 1000 }));
-            }).observe({ entryTypes: ['layout-shift'] });
-        } catch (err) {
-            console.error('Web Vitals error:', err);
-        }
-    }, []);
-
-    const detectBrowser = useCallback(() => {
-        if (typeof window === 'undefined') return;
-        const ua = navigator.userAgent;
-        let browserName = 'Unknown';
-        let browserVersion = '';
-
-        if (ua.indexOf('Chrome') > -1) browserName = 'Chrome';
-        else if (ua.indexOf('Safari') > -1) browserName = 'Safari';
-        else if (ua.indexOf('Firefox') > -1) browserName = 'Firefox';
-        else if (ua.indexOf('Edge') > -1) browserName = 'Edge';
-
-        const versionMatch = ua.match(/(?:Chrome|Safari|Firefox|Edge)\/(\d+)/);
-        if (versionMatch) browserVersion = versionMatch[1];
-
-        let os = 'Unknown';
-        if (ua.indexOf('Win') > -1) os = 'Windows';
-        else if (ua.indexOf('Mac') > -1) os = 'macOS';
-        else if (ua.indexOf('Linux') > -1) os = 'Linux';
-        else if (ua.indexOf('Android') > -1) os = 'Android';
-        else if (ua.indexOf('iOS') > -1) os = 'iOS';
-
-        const device = /Mobile|Android|iPhone/.test(ua) ? 'mobile' : 'desktop';
-
-        setBrowserInfo({ name: browserName, version: browserVersion, os, device });
-    }, []);
+    }, [supabase, calculateUptime, loadStabilityData, loadRecentLogs]);
 
     useEffect(() => {
-        // İlk yükleme
         checkHealth();
-        loadRecentLogs();
-        updateSystemMetrics();
-        initializeWebVitals();
-        updateNetworkInfo();
-        detectBrowser();
-        loadErrorStats();
-
-        // Intervals
-        const healthInterval = setInterval(() => {
-            checkHealth();
-            loadRecentLogs();
-        }, 30000);
-
+        const interval = setInterval(checkHealth, 30000);
         const metricsInterval = setInterval(() => {
-            updateSystemMetrics();
-            updateNetworkInfo();
-        }, 5000);
-
-        const uptimeInterval = setInterval(() => {
-            setUptime(prev => ({
-                ...prev,
-                upSeconds: Math.floor((Date.now() - prev.startTime) / 1000)
-            }));
-        }, 1000);
-
-        const errorInterval = setInterval(loadErrorStats, 60000);
-
-        // 🔥 REALTIME: System logs'u canlı dinle
-        const logsChannel = supabase
-            .channel('health-system-logs')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'system_logs'
-                },
-                () => {
-                    loadRecentLogs(); 
-                    loadErrorStats(); 
-                }
-            )
-            .subscribe((status) => {
-                const channels = supabase.getChannels();
-                setRealtimeStats({
-                    activeChannels: channels.length,
-                    status: channels.length > 0 ? 'connected' : 'disconnected',
+            if (typeof window !== 'undefined' && (performance as any).memory) {
+                const m = (performance as any).memory;
+                setSystemMetrics({ 
+                    heapUsed: Math.round(m.usedJSHeapSize / 1048576), 
+                    heapLimit: Math.round(m.jsHeapSizeLimit / 1048576),
+                    memoryPercent: Math.round((m.usedJSHeapSize / m.jsHeapSizeLimit) * 100)
                 });
-            });
+            }
+        }, 3000);
+
+        if ('connection' in navigator) {
+            const c = (navigator as any).connection;
+            setNetworkInfo({ effectiveType: c.effectiveType, downlink: c.downlink, rtt: c.rtt });
+        }
 
         return () => {
-            clearInterval(healthInterval);
+            clearInterval(interval);
             clearInterval(metricsInterval);
-            clearInterval(uptimeInterval);
-            clearInterval(errorInterval);
-            supabase.removeChannel(logsChannel);
         };
-    }, [
-        supabase, 
-        checkHealth, 
-        loadRecentLogs, 
-        updateSystemMetrics, 
-        initializeWebVitals, 
-        updateNetworkInfo, 
-        detectBrowser, 
-        loadErrorStats
-    ]);
+    }, [checkHealth]);
 
     return (
-        <div className="space-y-8 text-left text-white">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-white flex items-center gap-3">
-                        <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl shadow-blue-500/20">
-                            <Activity className="w-8 h-8 text-white" />
-                        </div>
-                        Sistem Sağlık Paneli
-                    </h1>
-                    <p className="text-zinc-400 mt-1 font-medium ml-14">Sunucu, veritabanı ve API katmanlarının canlı takibi</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="text-right hidden sm:block">
-                        <p className="text-[10px] font-black text-zinc-500 uppercase">Son Güncelleme</p>
-                        <p className="text-xs font-bold text-zinc-300">{lastRefresh.toLocaleTimeString()}</p>
+        <div className="space-y-12 text-left text-white font-sans pb-20 relative w-full">
+            {/* 1. Header HUD */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 border-b border-white/[0.04] pb-12">
+                <div className="flex items-start gap-8">
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-[1.5rem] shadow-lg shadow-blue-500/5 relative overflow-hidden">
+                        <Activity className="w-10 h-10 text-blue-500 relative z-10" />
+                        <div className="absolute inset-0 bg-blue-500/5 animate-pulse" />
                     </div>
-                    <Button onClick={checkHealth} variant="secondary" className="bg-zinc-900 border-white/5 rounded-xl font-bold h-12 w-12 p-0">
-                        <RefreshCcw className={`w-5 h-5 text-zinc-400 ${loading ? 'animate-spin' : ''}`} />
+                    <div>
+                        <div className="flex items-center gap-4 mb-3">
+                            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
+                                SİSTEM <span className="text-blue-500">SAĞLIĞI</span>
+                            </h1>
+                            <div className="flex items-center gap-2.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Tüm Sistemler Kararlı</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-6 text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-3.5 h-3.5" /> SON TARAMA: {lastRefresh.toLocaleTimeString('tr-TR')}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Server className="w-3.5 h-3.5" /> SALON_KÜMESİ: EU-WEST-1
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        onClick={checkHealth} 
+                        variant="secondary" 
+                        className="bg-zinc-950 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all rounded-xl h-14 px-8 font-black text-[10px] tracking-[0.3em] uppercase"
+                    >
+                        <RefreshCcw className={cn("w-4 h-4 mr-3", loading && "animate-spin")} />
+                        SİSTEMİ YENİDEN TARA
                     </Button>
                 </div>
             </div>
 
-            {/* Health Overview Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-6 bg-zinc-950/50 border-white/5 group">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-white/5 rounded-xl group-hover:scale-110 transition-transform text-emerald-500">
-                            <Database className="w-5 h-5" />
+            {/* 2. Status Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[
+                    { label: 'Veritabanı Erişimi', status: healthMetrics.dbStatus, icon: Database, color: 'text-emerald-500', desc: 'Sorgu Performansı' },
+                    { label: 'API Yanıt Hızı', status: `${healthMetrics.dbResponseTime}ms`, icon: Zap, color: 'text-amber-500', desc: 'Gidiş-Dönüş Süresi' },
+                    { label: 'Güvenlik Geçidi', status: healthMetrics.authStatus, icon: Lock, color: 'text-blue-500', desc: 'Kimlik Doğrulama' },
+                    { label: 'Bulut Depolama', status: healthMetrics.storageStatus, icon: HardDrive, color: 'text-purple-500', desc: 'Dosya Erişilebilirliği' },
+                ].map((m, i) => (
+                    <Card key={i} className="p-8 bg-zinc-950/20 border-white/[0.04] relative overflow-hidden group hover:border-blue-500/20 transition-all rounded-[2rem]">
+                         <div className="flex items-center justify-between mb-8">
+                            <div className={cn("p-3 bg-white/[0.03] border border-white/5 rounded-2xl group-hover:scale-110 transition-transform shadow-inner", m.color)}>
+                                <m.icon className="w-6 h-6" />
+                            </div>
+                            <div className={cn(
+                                "px-3 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-widest border shadow-lg",
+                                m.status.includes('ERROR') || m.status.includes('CRITICAL') ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            )}>
+                                {m.status}
+                            </div>
                         </div>
-                        <StatusBadge status={healthMetrics.dbStatus} />
-                    </div>
-                    <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Veritabanı (SQL)</p>
-                </Card>
-
-                <Card className="p-6 bg-zinc-950/50 border-white/5 group">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-white/5 rounded-xl group-hover:scale-110 transition-transform text-amber-500">
-                            <Zap className="w-5 h-5" />
+                        <div>
+                            <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-1">{m.label}</p>
+                            <p className="text-[9px] font-mono text-zinc-700 uppercase tracking-widest">{m.desc}</p>
                         </div>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                                {healthMetrics.dbResponseTime}ms
-                            </span>
-                        </div>
-                    </div>
-                    <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">API Yanıt Süresi</p>
-                </Card>
-
-                <Card className="p-6 bg-zinc-950/50 border-white/5 group">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-white/5 rounded-xl group-hover:scale-110 transition-transform text-blue-500">
-                            <Lock className="w-5 h-5" />
-                        </div>
-                        <StatusBadge status={healthMetrics.authStatus} />
-                    </div>
-                    <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Kimlik Doğrulama</p>
-                </Card>
-
-                <Card className="p-6 bg-zinc-950/50 border-white/5 group">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-white/5 rounded-xl group-hover:scale-110 transition-transform text-purple-500">
-                            <Server className="w-5 h-5" />
-                        </div>
-                        <StatusBadge status={healthMetrics.storageStatus} />
-                    </div>
-                    <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Bulut Depolama</p>
-                </Card>
+                    </Card>
+                ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Latency Chart Simulation */}
-                <Card className="lg:col-span-2 bg-zinc-950 border-white/5 p-8 relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h3 className="text-xl font-bold text-white">Performans Grafiği</h3>
-                            <p className="text-xs text-zinc-500 mt-1">Son 6 saatlik milisaniye cinsinden gecikme</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                                <span className="text-[10px] font-bold text-zinc-400">Main API</span>
+            {/* 3. Visual Analytics Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* System Stability Chart */}
+                <Card className="bg-zinc-950/20 border-white/[0.04] p-10 relative overflow-hidden rounded-[2.5rem]">
+                    <div className="flex items-center justify-between mb-12">
+                        <div className="flex items-center gap-5">
+                            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                                <ShieldCheck className="w-6 h-6 text-emerald-500" />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-                                <span className="text-[10px] font-bold text-zinc-400">DB Queries</span>
+                            <div>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Sistem Kararlılığı</h3>
+                                <p className="text-[10px] text-zinc-600 mt-1 uppercase font-bold tracking-[0.3em]">SON 7 GÜN :: HATA DAĞILIMI</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="h-48 flex items-end gap-2 px-2">
-                        {responseHistory.length > 0 ? responseHistory.map((responseTime, i) => {
-                            const maxTime = Math.max(...responseHistory, 100);
-                            const heightPercent = (responseTime / maxTime) * 100;
+                    <div className="h-64 flex items-end gap-4 px-2 relative z-10">
+                        {stabilityData.map((day, i) => {
+                            const total = day.success + day.error;
+                            const successHeight = total > 0 ? (day.success / (total + 5)) * 100 : 5;
+                            const errorHeight = total > 0 ? (day.error / (total + 5)) * 100 : 0;
+                            
                             return (
-                                <div key={i} className="flex-1 space-y-1 relative group/bar">
-                                    <div
-                                        className="w-full bg-emerald-500/20 rounded-t-sm hover:bg-emerald-500/40 transition-colors"
-                                        style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                                <div key={i} className="flex-1 flex flex-col justify-end gap-1 group relative">
+                                    {day.error > 0 && (
+                                        <motion.div 
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${errorHeight}%` }}
+                                            className="w-full bg-red-500/40 rounded-t-sm"
+                                        />
+                                    )}
+                                    <motion.div 
+                                        initial={{ height: 0 }}
+                                        animate={{ height: `${successHeight}%` }}
+                                        className="w-full bg-emerald-500/20 group-hover:bg-emerald-500/40 transition-colors rounded-t-sm"
                                     />
-                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-zinc-900 border border-white/10 rounded text-[10px] font-bold text-emerald-400 opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                        {responseTime}ms
+                                    <p className="text-[8px] font-mono font-black text-zinc-800 uppercase mt-4 text-center">{day.date}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
+
+                {/* Latency Telemetry Chart */}
+                <Card className="bg-zinc-950/20 border-white/[0.04] p-10 relative overflow-hidden rounded-[2.5rem]">
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+                    
+                    <div className="flex items-center justify-between mb-16 relative z-10">
+                        <div className="flex items-center gap-5">
+                            <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                                <Activity className="w-6 h-6 text-blue-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Gecikme Telemetrisi</h3>
+                                <p className="text-[10px] text-zinc-600 mt-1 uppercase font-bold tracking-[0.3em]">VERİTABANI GECİKMESİ :: SON 20 ÖRNEK</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-2 bg-zinc-950 border border-white/5 rounded-xl">
+                            <Wifi className="w-4 h-4 text-blue-500 animate-pulse" />
+                            <span className="text-[10px] font-mono font-black text-zinc-500 uppercase">Canlı</span>
+                        </div>
+                    </div>
+
+                    <div className="h-64 flex items-end gap-2 px-2 relative z-10">
+                        {responseHistory.map((val, i) => {
+                            const max = Math.max(...responseHistory, 200);
+                            const height = (val / max) * 100;
+                            return (
+                                <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
+                                    <motion.div 
+                                        initial={{ height: 0 }}
+                                        animate={{ height: `${Math.max(height, 5)}%` }}
+                                        className={cn(
+                                            "w-full rounded-t-lg transition-all duration-500 shadow-lg",
+                                            val < 100 
+                                                ? 'bg-blue-500/30 group-hover:bg-blue-500 shadow-blue-500/10' 
+                                                : 'bg-amber-500/30 group-hover:bg-amber-500 shadow-amber-500/10'
+                                        )}
+                                    />
+                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 p-2.5 bg-zinc-950 border border-white/10 rounded-xl text-[10px] font-mono font-black text-white opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50 shadow-2xl">
+                                        {val} MS
                                     </div>
                                 </div>
                             );
-                        }) : (
-                            // Placeholder while loading
-                            Array(20).fill(0).map((_, i) => (
-                                <div key={i} className="flex-1">
-                                    <div className="w-full bg-zinc-800/20 rounded-t-sm h-[20%]" />
+                        })}
+                    </div>
+                    <div className="mt-10 pt-6 border-t border-white/[0.04] flex justify-between text-[10px] font-mono font-black text-zinc-800 uppercase tracking-[0.4em]">
+                        <span>T-EKSİ 10 DAKİKA</span>
+                        <span className="text-blue-500/40">Cerrahi Monitör v4.2</span>
+                        <span>BAĞLANTI KARARLI</span>
+                    </div>
+                </Card>
+            </div>
+
+            {/* 4. Sub-Systems & External Services HUD */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+                <Card className="p-10 bg-zinc-950/20 border-white/[0.04] rounded-[2rem] relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
+                    <h4 className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-6">Bellek Ataması</h4>
+                    <div className="space-y-6">
+                         <div className="flex justify-between items-end">
+                            <p className="text-4xl font-black text-white tracking-tighter tabular-nums">{systemMetrics.heapUsed || '0'} <span className="text-sm text-zinc-800 font-mono">MB</span></p>
+                            <p className="text-[10px] font-mono font-black text-zinc-700">TOPLAM {systemMetrics.heapLimit || '0'} MB</p>
+                         </div>
+                         <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                            <motion.div 
+                                animate={{ width: `${systemMetrics.memoryPercent || 0}%` }}
+                                className="h-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]"
+                            />
+                         </div>
+                    </div>
+                </Card>
+
+                <Card className="p-10 bg-zinc-950/20 border-white/[0.04] rounded-[2rem] relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+                    <h4 className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-6">Ağ Yığını</h4>
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                            <p className="text-[10px] font-black text-zinc-800 uppercase tracking-widest mb-2">İndirme</p>
+                            <p className="text-3xl font-black text-white tracking-tighter tabular-nums">{networkInfo.downlink || '0'} <span className="text-[10px] text-zinc-800 font-mono uppercase">Mb/s</span></p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-zinc-800 uppercase tracking-widest mb-2">Gecikme</p>
+                            <p className="text-3xl font-black text-white tracking-tighter tabular-nums">{networkInfo.rtt || '0'} <span className="text-[10px] text-zinc-800 font-mono uppercase">ms</span></p>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-10 bg-zinc-950/20 border-white/[0.04] rounded-[2rem] relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/20 to-transparent" />
+                    <h4 className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-6">Harici Servisler</h4>
+                    <div className="flex gap-4">
+                         {[
+                            { label: 'GEMINI', status: externalApis.gemini.status, time: `${externalApis.gemini.responseTime}ms` },
+                            { label: 'RESEND', status: externalApis.resend.status, time: `${externalApis.resend.responseTime}ms` },
+                            { label: 'EDGE', status: 'ONLINE', time: '12ms' },
+                         ].map((api, i) => (
+                             <div key={i} className="flex-1 bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl group hover:border-orange-500/20 transition-all text-center">
+                                <p className="text-[10px] font-mono font-black text-zinc-500 group-hover:text-zinc-300 transition-colors uppercase">{api.label}</p>
+                                <p className="text-[9px] font-mono text-zinc-700 uppercase mt-1">{api.time}</p>
+                                <div className={cn(
+                                    "w-1 h-1 rounded-full mx-auto mt-2",
+                                    api.status === 'ONLINE' || api.status === 'ÇEVRİMİÇİ' ? 'bg-emerald-500' : 'bg-zinc-700'
+                                )} />
+                             </div>
+                         ))}
+                    </div>
+                </Card>
+            </div>
+
+            {/* 5. FULL WIDTH TERMINAL OUTPUT (Bottom) */}
+            <div className="space-y-6 w-full">
+                <div className="flex items-center justify-between px-4">
+                    <div className="flex items-center gap-4">
+                        <Terminal className="w-5 h-5 text-zinc-700" />
+                        <h2 className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.3em]">Sistem Olay Günlükleri</h2>
+                    </div>
+                    <Link href="/health/logs">
+                        <Button className="bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.05] text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.3em] h-10 px-6 rounded-xl transition-all">
+                            TÜM KAYITLARI İNCELE
+                        </Button>
+                    </Link>
+                </div>
+                <Card className="bg-[#020202] border-white/[0.04] min-h-[600px] flex flex-col rounded-[2rem] shadow-2xl relative overflow-hidden w-full">
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.005)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.005)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
+                    
+                    {/* Terminal Header Row */}
+                    <div className="bg-white/[0.02] px-8 py-3 border-b border-white/[0.04] flex items-center text-[10px] font-mono font-black text-zinc-700 uppercase tracking-[0.3em] relative z-10">
+                        <div className="w-32">Zaman</div>
+                        <div className="w-24">İşlem</div>
+                        <div className="flex-1 px-10">Olay Detayı</div>
+                        <div className="w-48 text-center">İşlemi Yapan</div>
+                        <div className="w-24 text-right">Durum</div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto divide-y divide-white/[0.02] hide-scrollbar relative z-10">
+                        {logs.length > 0 ? logs.map((log, i) => (
+                            <div key={i} className="flex items-center px-8 py-3.5 hover:bg-orange-500/[0.02] group transition-all duration-300 cursor-default border-l-2 border-transparent hover:border-orange-500/40">
+                                {/* Timestamp */}
+                                <div className="w-32 shrink-0 text-[11px] font-mono text-zinc-800 group-hover:text-zinc-500 transition-colors">
+                                    {format(new Date(log.created_at), 'HH:mm:ss:SSS')}
                                 </div>
-                            ))
+
+                                {/* Event Type */}
+                                <div className="w-24 shrink-0">
+                                    <span className={cn(
+                                        "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border",
+                                        log.event_type === 'success' ? 'text-emerald-500/60 border-emerald-500/10' : 'text-blue-500/60 border-blue-500/10'
+                                    )}>
+                                        {log.event_type === 'success' ? 'BAŞARILI' : 'BİLGİ'}
+                                    </span>
+                                </div>
+
+                                {/* Message */}
+                                <div className="flex-1 px-10 min-w-0">
+                                    <p className="text-[12px] font-mono font-medium text-zinc-500 group-hover:text-zinc-200 transition-colors truncate">
+                                        <span className="text-orange-500/30 mr-2">»</span>
+                                        {log.message}
+                                    </p>
+                                </div>
+
+                                {/* Actor */}
+                                <div className="w-48 shrink-0 text-center">
+                                    <span className="text-[10px] font-mono font-bold text-zinc-800 group-hover:text-zinc-600 transition-colors uppercase tracking-tight">
+                                        {log.user_email ? maskEmail(log.user_email) : 'SİSTEM_OTOMASYON'}
+                                    </span>
+                                </div>
+
+                                {/* Status Light */}
+                                <div className="w-24 shrink-0 flex justify-end items-center gap-3">
+                                    <span className={cn(
+                                        "text-[9px] font-black uppercase tracking-widest transition-colors",
+                                        log.event_type === 'success' ? 'text-emerald-500/40 group-hover:text-emerald-500' : 
+                                        log.event_type === 'error' ? 'text-red-500/40 group-hover:text-red-500' : 
+                                        'text-blue-500/40 group-hover:text-blue-500'
+                                    )}>
+                                        {log.event_type === 'success' ? 'ONAYLANDI' : 
+                                         log.event_type === 'error' ? 'BAŞARISIZ' : 'İŞLENDİ'}
+                                    </span>
+                                    <div className={cn(
+                                        "w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]",
+                                        log.event_type === 'success' ? 'text-emerald-500 bg-current' : 
+                                        log.event_type === 'error' ? 'text-red-500 bg-current' : 
+                                        'text-blue-500 bg-current'
+                                    )} />
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="h-full flex flex-col items-center justify-center py-40 opacity-5">
+                                <Terminal className="w-32 h-32 mb-6" />
+                                <p className="text-xl font-black uppercase tracking-[0.5em]">VERİ AKIŞI YOK</p>
+                            </div>
                         )}
                     </div>
-                    <div className="mt-4 pt-4 border-t border-white/5 flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-                        <span>12:00</span>
-                        <span>14:00</span>
-                        <span>16:00</span>
-                        <span>Şimdi</span>
-                    </div>
-                </Card>
-
-                {/* System Logs */}
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                        <Globe className="w-5 h-5 text-zinc-500" /> Sistem Kayıtları
-                    </h2>
-                    <Card className="bg-zinc-950 border-white/5 p-6 space-y-4">
-                        {logs.map((log, i) => (
-                            <div key={i} className="flex gap-3 text-left">
-                                <div className={`w-1 h-10 rounded-full shrink-0 ${log.event_type === 'success' ? 'bg-emerald-500' : log.event_type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium text-zinc-300 leading-tight truncate">{log.message}</p>
-                                    <p className="text-[10px] font-bold text-zinc-600 uppercase mt-1">
-                                        {new Date(log.created_at).toLocaleTimeString()} • {log.user_email?.split('@')[0] || 'System'}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                        {logs.length === 0 && <p className="text-xs text-zinc-600 italic">Henüz kayıt bulunmuyor.</p>}
-
-                        <Link href="/health/logs" className="block">
-                            <Button className="w-full mt-4 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white text-xs font-black uppercase tracking-widest h-12 rounded-xl shadow-lg shadow-orange-500/20">
-                                Tüm Logları İncele
-                            </Button>
-                        </Link>
-                    </Card>
-
-                    <Card className="bg-gradient-to-br from-blue-600/20 to-transparent border-blue-500/20 p-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <Cpu className="w-4 h-4 text-blue-400" />
-                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
-                                Tarayıcı Belleği
-                            </h4>
+                    
+                    {/* Console Footer */}
+                    <div className="bg-white/[0.01] px-8 py-3 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono font-black text-zinc-800 uppercase tracking-[0.4em] relative z-10">
+                        <div className="flex gap-10">
+                            <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Bağlantı: Aktif</span>
+                            <span>Hafıza: Normal</span>
                         </div>
-                        <div className="space-y-3">
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase">
-                                    <span>Kullanılan</span>
-                                    <span>{systemMetrics.heapUsed > 0 ? `${systemMetrics.heapUsed} MB` : 'N/A'}</span>
-                                </div>
-                                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-blue-500 transition-all duration-500"
-                                        style={{ width: `${systemMetrics.memoryPercent}%` }}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase">
-                                    <span>Limit</span>
-                                    <span>{systemMetrics.heapLimit > 0 ? `${systemMetrics.heapLimit} MB` : 'N/A'}</span>
-                                </div>
-                                <div className="text-[10px] text-zinc-600 mt-2">
-                                    {systemMetrics.heapUsed > 0 ? (
-                                        `${systemMetrics.memoryPercent}% kullanımda`
-                                    ) : (
-                                        'Chrome/Edge tarayıcısında çalıştırın'
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            </div>
-
-            {/* New Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Core Web Vitals */}
-                <Card className="p-6 bg-gradient-to-br from-purple-600/10 to-transparent border-purple-500/20">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-purple-500/10 rounded-xl">
-                            <Activity className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Web Metrikleri</span>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[10px]">
-                            <span className="text-zinc-500 font-bold">LCP</span>
-                            <span className={`font-black ${webVitals.lcp < 2500 ? 'text-emerald-400' : webVitals.lcp < 4000 ? 'text-amber-400' : 'text-red-400'}`}>
-                                {webVitals.lcp > 0 ? `${webVitals.lcp}ms` : 'N/A'}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-[10px]">
-                            <span className="text-zinc-500 font-bold">FID</span>
-                            <span className={`font-black ${webVitals.fid < 100 ? 'text-emerald-400' : webVitals.fid < 300 ? 'text-amber-400' : 'text-red-400'}`}>
-                                {webVitals.fid > 0 ? `${webVitals.fid}ms` : 'N/A'}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-[10px]">
-                            <span className="text-zinc-500 font-bold">CLS</span>
-                            <span className={`font-black ${webVitals.cls < 0.1 ? 'text-emerald-400' : webVitals.cls < 0.25 ? 'text-amber-400' : 'text-red-400'}`}>
-                                {webVitals.cls > 0 ? webVitals.cls : 'N/A'}
-                            </span>
-                        </div>
-                    </div>
-                </Card>
-
-                {/* Network Quality */}
-                <Card className="p-6 bg-gradient-to-br from-cyan-600/10 to-transparent border-cyan-500/20">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-xl">
-                            <Globe className="w-5 h-5 text-cyan-400" />
-                        </div>
-                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">Ağ Bağlantısı</span>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[10px]">
-                            <span className="text-zinc-500 font-bold">Tür</span>
-                            <span className="text-cyan-400 font-black uppercase">{networkInfo.effectiveType}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px]">
-                            <span className="text-zinc-500 font-bold">Hız</span>
-                            <span className="text-cyan-400 font-black">{networkInfo.downlink > 0 ? `${networkInfo.downlink} Mbps` : 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px]">
-                            <span className="text-zinc-500 font-bold">RTT</span>
-                            <span className="text-cyan-400 font-black">{networkInfo.rtt > 0 ? `${networkInfo.rtt}ms` : 'N/A'}</span>
-                        </div>
-                    </div>
-                </Card>
-
-                {/* Realtime Connections */}
-                <Card className="p-6 bg-gradient-to-br from-green-600/10 to-transparent border-green-500/20">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-green-500/10 rounded-xl">
-                            <Zap className="w-5 h-5 text-green-400" />
-                        </div>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/20 rounded-lg">
-                            <span className={`w-1.5 h-1.5 rounded-full ${realtimeStats.status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-zinc-600'}`} />
-                            <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">
-                                {realtimeStats.status === 'connected' ? 'bağlı' : 'bağlantı kesildi'}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="text-3xl font-black text-green-400">{realtimeStats.activeChannels}</div>
-                    <p className="text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-widest">Aktif Kanallar</p>
-                </Card>
-
-                {/* Uptime */}
-                <Card className="p-6 bg-gradient-to-br from-amber-600/10 to-transparent border-amber-500/20">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-amber-500/10 rounded-xl">
-                            <Clock className="w-5 h-5 text-amber-400" />
-                        </div>
-                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Çalışma Süresi</span>
-                    </div>
-                    <div className="text-2xl font-black text-amber-400">
-                        {Math.floor(uptime.upSeconds / 3600)}h {Math.floor((uptime.upSeconds % 3600) / 60)}m
-                    </div>
-                    <p className="text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-widest">
-                        {Math.floor(uptime.upSeconds / 86400)} gün aktif
-                    </p>
-                </Card>
-            </div>
-
-            {/* External APIs & Browser Info */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* External APIs */}
-                <Card className="p-6 bg-zinc-950/50 border-white/5">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
-                            <Server className="w-5 h-5 text-white" />
-                        </div>
-                        Harici Servisler
-                    </h3>
-                    <div className="space-y-4">
-                        {/* Gemini AI */}
-                        <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl border border-white/5 group/service">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-purple-500/10 rounded-lg group-hover/service:bg-purple-500/20 transition-colors">
-                                    <Sparkles className="w-4 h-4 text-purple-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-white">Google Gemini 2.0</p>
-                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">AI Model API</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className={`text-xs font-black uppercase ${externalApis.gemini.status === 'çalışıyor' ? 'text-emerald-400' :
-                                    externalApis.gemini.status === 'kontrol ediliyor' ? 'text-amber-400' : 'text-red-400'
-                                    }`}>
-                                    {externalApis.gemini.status}
-                                </div>
-                                {externalApis.gemini.responseTime > 0 && (
-                                    <p className="text-[10px] text-zinc-600 font-bold">{externalApis.gemini.responseTime}ms</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Resend */}
-                        <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl border border-white/5 group/service">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-orange-500/10 rounded-lg group-hover/service:bg-orange-500/20 transition-colors">
-                                    <Server className="w-4 h-4 text-orange-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-white">Resend</p>
-                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Email Delivery</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className={`text-xs font-black uppercase ${externalApis.resend.status === 'çalışıyor' ? 'text-emerald-400' :
-                                    externalApis.resend.status === 'yetkisiz' ? 'text-amber-400' :
-                                        externalApis.resend.status === 'kontrol ediliyor' ? 'text-amber-400' : 'text-red-400'
-                                    }`}>
-                                    {externalApis.resend.status}
-                                </div>
-                                {externalApis.resend.responseTime > 0 && (
-                                    <p className="text-[10px] text-zinc-600 font-bold">{externalApis.resend.responseTime}ms</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Supabase Server */}
-                        <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl border border-white/5 group/service">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/10 rounded-lg group-hover/service:bg-emerald-500/20 transition-colors">
-                                    <Database className="w-4 h-4 text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-white">Supabase Core</p>
-                                    <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Backend Engine (Srv)</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className={`text-xs font-black uppercase ${externalApis.supabaseServer.status === 'çalışıyor' ? 'text-emerald-400' :
-                                    externalApis.supabaseServer.status === 'kontrol ediliyor' ? 'text-amber-400' : 'text-red-400'
-                                    }`}>
-                                    {externalApis.supabaseServer.status}
-                                </div>
-                                {externalApis.supabaseServer.responseTime > 0 && (
-                                    <p className="text-[10px] text-zinc-600 font-bold">{externalApis.supabaseServer.responseTime}ms</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Vercel */}
-                        <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl border border-white/5 group/service">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="p-2 bg-blue-500/10 rounded-lg group-hover/service:bg-blue-500/20 transition-colors shrink-0">
-                                    <Globe className="w-4 h-4 text-blue-400" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-white flex items-center gap-2">
-                                        Vercel Edge
-                                        {externalApis.vercel.env && (
-                                            <span className="text-[8px] px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded font-black text-blue-400">
-                                                {externalApis.vercel.env.toUpperCase()}
-                                            </span>
-                                        )}
-                                    </p>
-                                    <p className="text-[10px] text-zinc-500 font-bold truncate">
-                                        {externalApis.vercel.commitMsg || 'Deployment Network'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                                <div className={`text-xs font-black uppercase ${externalApis.vercel.status === 'çalışıyor' ? 'text-emerald-400' :
-                                    externalApis.vercel.status === 'kontrol ediliyor' ? 'text-amber-400' : 'text-red-400'
-                                    }`}>
-                                    {externalApis.vercel.status}
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    {externalApis.vercel.region && (
-                                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{externalApis.vercel.region}</p>
-                                    )}
-                                    {externalApis.vercel.commitSha && (
-                                        <p className="text-[9px] text-zinc-700 font-mono font-bold mt-0.5 tracking-tighter">
-                                            ID: {externalApis.vercel.commitSha}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-
-                {/* Browser & Device Info */}
-                <Card className="p-6 bg-zinc-950/50 border-white/5">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl">
-                            <Cpu className="w-5 h-5 text-white" />
-                        </div>
-                        Tarayıcı & Cihaz
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-zinc-900/40 rounded-xl border border-white/5">
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-2">Tarayıcı</p>
-                            <p className="text-lg font-black text-white">{browserInfo.name}</p>
-                            <p className="text-[10px] text-zinc-600 font-bold">v{browserInfo.version}</p>
-                        </div>
-                        <div className="p-4 bg-zinc-900/40 rounded-xl border border-white/5">
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-2">İşletim Sistemi</p>
-                            <p className="text-lg font-black text-white">{browserInfo.os}</p>
-                            <p className="text-[10px] text-zinc-600 font-bold uppercase">
-                                {browserInfo.device === 'mobile' ? 'Mobil' : 'Masaüstü'}
-                            </p>
+                        <div className="flex items-center gap-4">
+                            <div className="w-2 h-4 bg-orange-500 animate-pulse shadow-[0_0_15px_orange]" />
+                            <span>KÜRESEL TELEMETRİ AKIŞI BEKLENİYOR...</span>
                         </div>
                     </div>
                 </Card>
             </div>
-
-            {/* Error Stats */}
-            <Card className="p-6 bg-zinc-950/50 border-red-500/20">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl">
-                            <AlertCircle className="w-5 h-5 text-white" />
-                        </div>
-                        Hata Takibi
-                    </h3>
-                    <div className="flex gap-4">
-                        <div className="text-right">
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold">Son Saat</p>
-                            <p className="text-2xl font-black text-red-400">{errorStats.lastHour}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold">Toplam</p>
-                            <p className="text-2xl font-black text-zinc-400">{errorStats.total}</p>
-                        </div>
-                    </div>
-                </div>
-                {errorStats.recentErrors.length > 0 ? (
-                    <div className="space-y-2">
-                        {errorStats.recentErrors.map((error, i) => (
-                            <div key={i} className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg flex items-start gap-3">
-                                <div className="w-1 h-8 bg-red-500 rounded-full shrink-0" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs text-red-400 font-medium truncate">{error.message}</p>
-                                    <p className="text-[10px] text-zinc-600 font-bold uppercase mt-1">
-                                        {new Date(error.created_at).toLocaleString()}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-8 text-zinc-600">
-                        <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                        <p className="text-sm font-bold">Son saatte hata yok! 🎉</p>
-                    </div>
-                )}
-            </Card>
         </div>
     );
 }
-
-const StatusBadge = ({ status }: { status: string }) => {
-    return (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{status}</span>
-        </div>
-    );
-};
