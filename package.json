@@ -1,0 +1,45 @@
+{
+  "name": "gymboost",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "browser-image-compression": "^2.0.2",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "framer-motion": "^12.23.26",
+    "html5-qrcode": "^2.3.8",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "sonner": "^2.0.7",
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^13.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "pg": "^8.16.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
