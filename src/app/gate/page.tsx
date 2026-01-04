@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Button } from '@/components/ui';
 import { KeyRound, ShieldAlert, Fingerprint, Loader2 } from 'lucide-react';
-import Cookies from 'js-cookie';
+import { verifyGateAccess } from './actions';
 
 export default function MasterGatePage() {
     const router = useRouter();
@@ -13,8 +13,6 @@ export default function MasterGatePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [shake, setShake] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-    const GATE_CODE = '896903';
 
     useEffect(() => {
         inputRefs.current[0]?.focus();
@@ -65,22 +63,25 @@ export default function MasterGatePage() {
 
         setIsLoading(true);
 
-        // Simulate verification delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        try {
+            // Server Action'ı çağır (Güvenli Kontrol)
+            const result = await verifyGateAccess(enteredCode);
 
-        if (enteredCode === GATE_CODE) {
-            // Set gate access cookie (expires in 24 hours)
-            Cookies.set('master-gate-access', 'granted', { expires: 1, secure: true, sameSite: 'strict' });
-            router.push('/login');
-        } else {
-            setShake(true);
-            setError('Geçersiz erişim kodu');
-            setCode(['', '', '', '', '', '']);
-            inputRefs.current[0]?.focus();
-            setTimeout(() => setShake(false), 500);
+            if (result.success) {
+                router.push('/login');
+                router.refresh(); // Cookie'nin aktif olması için
+            } else {
+                setShake(true);
+                setError(result.message || 'Geçersiz erişim kodu');
+                setCode(['', '', '', '', '', '']);
+                inputRefs.current[0]?.focus();
+                setTimeout(() => setShake(false), 500);
+            }
+        } catch (err) {
+            setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+        } finally {
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
     };
 
     return (
