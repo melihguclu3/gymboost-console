@@ -53,7 +53,7 @@ export default function SuperVerifyPage() {
         }
         setIsLoading(true);
         setError('');
-        
+
         try {
             const response = await fetch('/api/admin/verify-email', {
                 method: 'POST',
@@ -108,7 +108,7 @@ export default function SuperVerifyPage() {
                 throw new Error(data.message || 'Doğrulama başarısız.');
             }
 
-            router.push('');
+            router.push('/');
         } catch (err: any) {
             setError(err.message || 'Doğrulama sırasında hata oluştu.');
             setCode('');
@@ -143,10 +143,10 @@ export default function SuperVerifyPage() {
                         <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5 text-center text-white">
                             <Mail className="w-8 h-8 text-zinc-600 mx-auto mb-4" />
                             <p className="text-zinc-400 text-sm leading-relaxed text-center">
-                                Sisteme tam yetki ile erişmek için <span className="text-white font-bold">{userEmail || '...'} </span> adresine bir güvenlik kodu gönderilecektir.
+                                Sisteme tam yetki ile erişmek için <span className="text-white font-bold">kayıtlı e-posta adresinize</span> bir güvenlik kodu gönderilecektir.
                             </p>
                         </div>
-                        <Button 
+                        <Button
                             onClick={sendEmailCode}
                             isLoading={isLoading}
                             className="w-full h-16 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-white/5 text-xs text-center"
@@ -158,7 +158,7 @@ export default function SuperVerifyPage() {
                     <div className="space-y-6">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 text-center block">Doğrulama Kodu</label>
-                            <input 
+                            <input
                                 type="text"
                                 maxLength={6}
                                 placeholder="000 000"
@@ -177,14 +177,14 @@ export default function SuperVerifyPage() {
                                 </p>
                             )}
                         </div>
-                        <Button 
+                        <Button
                             onClick={handleVerify}
                             disabled={countdown === 0 || isLoading}
                             className="w-full h-16 bg-gradient-to-r from-orange-600 to-red-600 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-orange-500/30 text-xs text-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? 'Kontrol Ediliyor...' : 'Sistemi Aç'} <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
-                        <button 
+                        <button
                             onClick={() => sendEmailCode()} // Yeniden başlat
                             disabled={resendCountdown > 0}
                             className={`w-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer ${resendCountdown > 0 ? 'text-zinc-600 opacity-50' : 'text-white hover:text-orange-500'}`}

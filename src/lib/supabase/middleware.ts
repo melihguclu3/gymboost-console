@@ -8,9 +8,18 @@ export async function updateSession(request: NextRequest) {
     // MASTER YETKİLERİ: Environment variable'dan okunur (virgülle ayrılmış)
     const masterEmails = (process.env.MASTER_ADMIN_EMAILS || '').split(',').filter(Boolean);
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase environment variables');
+        return supabaseResponse;
+    }
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() { return request.cookies.getAll(); },
@@ -24,6 +33,12 @@ export async function updateSession(request: NextRequest) {
     );
 
     const path = request.nextUrl.pathname;
+
+    // API route'ları için korumayı atla - kendi auth mekanizmalarını kullanıyorlar
+    const isApiRoute = path.startsWith('/api/');
+    if (isApiRoute) {
+        return supabaseResponse;
+    }
 
     // Console projesi standalone olduğu için her yer Master Area'dır.
     // 1. MASTER ALAN TANIMLAMALARI
@@ -50,43 +65,53 @@ export async function updateSession(request: NextRequest) {
         return supabaseResponse;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
 
-    // 2.2 Normal master alan kontrolleri (gate geçildikten sonra)
-    if (!user && !isMasterLogin) {
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    if (user) {
-        if (!masterEmails.includes(user.email || '')) {
-            // Master değilse erişimi kapat (Standalone konsol projesi master dışında kimseye açılmaz)
-            return NextResponse.redirect(new URL('https://app.gymboost.tr', request.url));
+        // 2.2 Normal master alan kontrolleri (gate geçildikten sonra)
+        if (!user && !isMasterLogin) {
+            return NextResponse.redirect(new URL('/login', request.url));
         }
 
-        if (!isMasterLogin && !isMasterVerify) {
-            const sessionToken = request.cookies.get('super-admin-session')?.value;
-            if (!sessionToken) {
-                return NextResponse.redirect(new URL('/verify', request.url));
+        if (user) {
+            if (!masterEmails.includes(user.email || '')) {
+                // Master değilse erişimi kapat (Standalone konsol projesi master dışında kimseye açılmaz)
+                return NextResponse.redirect(new URL('https://app.gymboost.tr', request.url));
             }
 
-            const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-            const { data: session } = await supabaseAdmin
-                .from('admin_verification_sessions')
-                .select('id, expires_at, revoked_at')
-                .eq('session_token', sessionToken)
-                .gt('expires_at', new Date().toISOString())
-                .is('revoked_at', null)
-                .single();
+            if (!isMasterLogin && !isMasterVerify) {
+                const sessionToken = request.cookies.get('super-admin-session')?.value;
+                if (!sessionToken) {
+                    return NextResponse.redirect(new URL('/verify', request.url));
+                }
 
-            if (!session) {
-                return NextResponse.redirect(new URL('/verify', request.url));
+                if (!serviceRoleKey) {
+                    console.error('SUPABASE_SERVICE_ROLE_KEY is missing');
+                    return supabaseResponse;
+                }
+
+                const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+                const { data: session } = await supabaseAdmin
+                    .from('admin_verification_sessions')
+                    .select('id, expires_at, revoked_at')
+                    .eq('session_token', sessionToken)
+                    .gt('expires_at', new Date().toISOString())
+                    .is('revoked_at', null)
+                    .single();
+
+                if (!session) {
+                    return NextResponse.redirect(new URL('/verify', request.url));
+                }
+
+                await supabaseAdmin
+                    .from('admin_verification_sessions')
+                    .update({ last_used_at: new Date().toISOString() })
+                    .eq('id', session.id);
             }
-
-            await supabaseAdmin
-                .from('admin_verification_sessions')
-                .update({ last_used_at: new Date().toISOString() })
-                .eq('id', session.id);
         }
+    } catch (error) {
+        console.error('Middleware error:', error);
+        return supabaseResponse;
     }
 
     return supabaseResponse;
