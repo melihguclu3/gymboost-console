@@ -6,6 +6,28 @@ export async function updateSession(request: NextRequest) {
     try {
         let supabaseResponse = NextResponse.next({ request });
 
+        // -----------------------------------------------------------------------
+        // 0. KATMAN: IP KISITLAMASI (Opsiyonel Güvenlik Duvarı)
+        // -----------------------------------------------------------------------
+        const allowedIps = process.env.ALLOWED_IPS; // Örn: "192.168.1.1,88.241.x.x"
+        
+        if (allowedIps) {
+            // Vercel/Proxy arkasında gerçek IP 'x-forwarded-for' başlığında gelir
+            // Genelde format: "client_ip, proxy1, proxy2" şeklindedir. İlkini alırız.
+            const forwardedFor = request.headers.get('x-forwarded-for');
+            const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
+            const allowedList = allowedIps.split(',').map(ip => ip.trim());
+
+            // Eğer IP tespit edilemezse veya listede yoksa -> 403 Forbidden
+            if (!clientIp || !allowedList.includes(clientIp)) {
+                console.warn(`Unauthorized IP access attempt blocked: ${clientIp}`);
+                return new NextResponse(
+                    `<h1>403 - Access Denied</h1><p>Your IP address (${clientIp || 'unknown'}) is not authorized to access this secure console.</p>`,
+                    { status: 403, headers: { 'content-type': 'text/html' } }
+                );
+            }
+        }
+
         // MASTER YETKİLERİ: Environment variable'dan okunur (virgülle ayrılmış)
         const masterEmails = (process.env.MASTER_ADMIN_EMAILS || '').split(',').filter(Boolean);
 
