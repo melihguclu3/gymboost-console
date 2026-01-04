@@ -132,9 +132,14 @@ export async function updateSession(request: NextRequest) {
 
     } catch (e: any) {
         console.error('Critical Middleware Error:', e);
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         // Hata detayını gösteren güvenli bir yanıt dön
         return new NextResponse(
-            `<h1>Server Error</h1><p>${e.message}</p><pre>${e.stack}</pre>`,
+            `<h1>Server Error</h1>
+             <p><strong>Message:</strong> ${e.message}</p>
+             <p><strong>Detected URL:</strong> "${supabaseUrl}" (Length: ${supabaseUrl?.length || 0})</p>
+             <hr/>
+             <pre>${e.stack}</pre>`,
             { status: 500, headers: { 'content-type': 'text/html' } }
         );
     }
