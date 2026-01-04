@@ -62,19 +62,19 @@ export async function updateSession(request: NextRequest) {
         // 2.1 GATE (KAPI) KONTROLÜ - Tüm master alanına girmeden önce şifre gerekli
         const hasGateAccess = request.cookies.get('master-gate-access')?.value === 'granted';
 
+        // Gate sayfasındaysak: Güvenlik önlemi olarak MEVCUT İZNİ SİL (Kilitle)
+        // Böylece sayfayı yenileyen veya geri gelen herkes tekrar şifre girmek zorunda kalır.
+        if (isMasterGate) {
+            if (hasGateAccess) {
+                // Cookie'yi silerek yanıt ver
+                supabaseResponse.cookies.delete('master-gate-access');
+            }
+            return supabaseResponse;
+        }
+
         if (!hasGateAccess && !isMasterGate) {
             // Gate erişimi yoksa ve gate sayfasında değilse -> Gate'e yönlendir
             return NextResponse.redirect(new URL('/gate', request.url));
-        }
-
-        // Gate sayfasındaysa ve erişimi varsa -> Login'e yönlendir
-        if (isMasterGate && hasGateAccess) {
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
-
-        // Gate sayfasındaysa işleme devam et
-        if (isMasterGate) {
-            return supabaseResponse;
         }
 
         const { data: { user }, error: authError } = await supabase.auth.getUser();
