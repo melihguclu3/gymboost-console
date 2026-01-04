@@ -33,9 +33,12 @@ import { Suspense } from 'react';
 
 // --- TRANSLATIONS ---
 const CATEGORY_MAP: Record<string, string> = {
-    'gyms': 'Sistem Ayarları', 'users': 'Üye & Eğitmen', 'memberships': 'Üyelikler',
-    'payments': 'Finansal', 'products': 'Mağaza', 'inventory': 'Stok',
-    'check_ins': 'Giriş/Çıkış', 'workout_sessions': 'Antrenman', 'auth': 'Güvenlik'
+    'gyms': 'Sistem Ayarları', 'system_settings': 'Sistem Ayarları', 'users': 'Üye & Eğitmen', 
+    'memberships': 'Üyelikler', 'payments': 'Finansal', 'products': 'Mağaza', 
+    'inventory': 'Stok', 'check_ins': 'Giriş/Çıkış', 'workout_sessions': 'Antrenman', 
+    'auth': 'Güvenlik', 'measurements': 'Ölçümler', 'nutrition': 'Beslenme',
+    'appointments': 'Randevular', 'announcements': 'Duyurular',
+    'ai_assistant': 'AI Asistan', 'rentals': 'Alan Kiralama'
 };
 
 const ROLE_MAP: Record<string, string> = {

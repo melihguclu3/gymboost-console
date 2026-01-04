@@ -10,15 +10,18 @@ export async function verifyPattern(pattern: number[]) {
     // ÖRNEK DESEN: 0 -> 1 -> 5 -> 6 (Basit bir Z şekli veya kare)
     // Bunu .env dosyasına "0-1-5-6" şeklinde kaydedeceğiz.
     const correctPatternStr = process.env.MASTER_PATTERN_CODE;
-    // M Harfi (Melih): Sol alt -> Sol üst -> Orta -> Sağ üst -> Sağ alt
-    const fallbackMPattern = '12-8-4-0-5-10-3-7-11-15';
     
     // Gecikme (Timing Attack önlemi)
     await new Promise(resolve => setTimeout(resolve, 600));
 
+    if (!correctPatternStr) {
+        console.error('MASTER_PATTERN_CODE is not defined!');
+        return { success: false, message: 'Sunucu yapılandırma hatası.' };
+    }
+
     const submittedPatternStr = pattern.join('-');
     
-    if (submittedPatternStr === correctPatternStr || submittedPatternStr === fallbackMPattern) {
+    if (submittedPatternStr === correctPatternStr) {
         const cookieStore = await cookies();
         
         cookieStore.set('master-pattern-access', 'granted', {

@@ -42,10 +42,21 @@ import { tr } from 'date-fns/locale';
 // --- TRANSLATIONS ---
 const CATEGORY_MAP: Record<string, { label: string, color: string }> = {
     'gyms': { label: 'SYSTEM', color: 'text-zinc-400 bg-zinc-400/10 border-zinc-400/20' },
+    'system_settings': { label: 'CONFIG', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
     'users': { label: 'PERSONNEL', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
     'memberships': { label: 'SUBSCRIPTION', color: 'text-purple-400 bg-purple-400/10 border-purple-400/20' },
     'payments': { label: 'FINANCE', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
-    'auth': { label: 'SECURITY', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' }
+    'auth': { label: 'SECURITY', color: 'text-red-400 bg-red-400/10 border-red-400/20' },
+    'products': { label: 'STORE', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
+    'inventory': { label: 'STOCK', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
+    'check_ins': { label: 'ACCESS', color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20' },
+    'workout_sessions': { label: 'WORKOUT', color: 'text-indigo-400 bg-indigo-400/10 border-indigo-400/20' },
+    'measurements': { label: 'METRICS', color: 'text-pink-400 bg-pink-400/10 border-pink-400/20' },
+    'nutrition': { label: 'DIET', color: 'text-lime-400 bg-lime-400/10 border-lime-400/20' },
+    'appointments': { label: 'CALENDAR', color: 'text-rose-400 bg-rose-400/10 border-rose-400/20' },
+    'announcements': { label: 'BROADCAST', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
+    'ai_assistant': { label: 'COPILOT', color: 'text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/20' },
+    'rentals': { label: 'RENTAL', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' }
 };
 
 // --- COMPONENTS ---

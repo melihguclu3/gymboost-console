@@ -21,7 +21,14 @@ export type LogEntity =
   | 'inventory'
   | 'workout_sessions'
   | 'check_ins'
-  | 'system_settings';
+  | 'system_settings'
+  | 'measurements'
+  | 'nutrition'
+  | 'appointments'
+  | 'announcements'
+  | 'auth'
+  | 'ai_assistant'
+  | 'rentals';
 
 interface LogActivityParams {
   eventType: LogEventType;

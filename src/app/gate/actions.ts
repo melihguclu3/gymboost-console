@@ -6,12 +6,17 @@ import { createClient } from '@/lib/supabase/server';
 export async function verifyGateAccess(code: string) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const correctCode = process.env.MASTER_GATE_CODE || '896903';
+    const correctCode = process.env.MASTER_GATE_CODE;
     
     // Brute-force yavaşlatma
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    if (code === correctCode || code === '896903') {
+    if (!correctCode) {
+        console.error('MASTER_GATE_CODE is not defined!');
+        return { success: false, message: 'Sunucu yapılandırma hatası.' };
+    }
+
+    if (code === correctCode) {
         const cookieStore = await cookies();
         
         cookieStore.set('master-gate-access', 'granted', {

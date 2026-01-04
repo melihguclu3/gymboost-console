@@ -6,7 +6,7 @@
 - Environments: .env.local, .env.production
 
   Creating an optimized production build ...
-✓ Compiled successfully in 5.8s
+✓ Compiled successfully in 3.1s
   Running TypeScript ...
   Collecting page data using 7 workers ...
 ⚠ Using edge runtime on a page currently disables static generation for that page
@@ -14,7 +14,7 @@
   Generating static pages using 7 workers (4/17) 
   Generating static pages using 7 workers (8/17) 
   Generating static pages using 7 workers (12/17) 
-✓ Generating static pages using 7 workers (17/17) in 236.0ms
+✓ Generating static pages using 7 workers (17/17) in 207.9ms
   Finalizing page optimization ...
 
 Route (app)
