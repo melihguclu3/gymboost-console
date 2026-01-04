@@ -9,15 +9,22 @@ export async function updateSession(request: NextRequest) {
         // MASTER YETKİLERİ: Environment variable'dan okunur (virgülle ayrılmış)
         const masterEmails = (process.env.MASTER_ADMIN_EMAILS || '').split(',').filter(Boolean);
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        // Değerleri temizle (boşlukları sil)
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
         if (!supabaseUrl || !supabaseAnonKey) {
             console.error('Missing Supabase environment variables');
-            // Geliştirme ortamında hatayı göster, prod'da logla
             return new NextResponse(
-                JSON.stringify({ error: 'Missing Supabase environment variables', hint: 'Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY' }),
+                JSON.stringify({ 
+                    error: 'Missing Supabase environment variables', 
+                    debug: { 
+                        hasUrl: !!supabaseUrl, 
+                        hasKey: !!supabaseAnonKey,
+                        urlLength: supabaseUrl?.length 
+                    } 
+                }),
                 { status: 500, headers: { 'content-type': 'application/json' } }
             );
         }
