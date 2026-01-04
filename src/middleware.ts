@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-export async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
     // Console projesi zaten kendi başına bağımsız olduğu için 
     // ek subdomain rewrite mantığına burada gerek yok.
     // Sadece Supabase oturum kontrolünü yapıyoruz.
