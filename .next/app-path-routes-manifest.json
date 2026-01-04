@@ -1,0 +1,18 @@
+{
+  "/(console)/gyms/[id]/page": "/gyms/[id]",
+  "/(console)/gyms/page": "/gyms",
+  "/(console)/health/logs/page": "/health/logs",
+  "/(console)/health/page": "/health",
+  "/(console)/page": "/",
+  "/(console)/revenue/page": "/revenue",
+  "/(console)/settings/page": "/settings",
+  "/(console)/users/page": "/users",
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/gate/page": "/gate",
+  "/icon-192/route": "/icon-192",
+  "/icon-512/route": "/icon-512",
+  "/login/page": "/login",
+  "/manifest.webmanifest/route": "/manifest.webmanifest",
+  "/verify/page": "/verify"
+}

@@ -1,0 +1,3 @@
+module.exports=[68446,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(26329);a.n(d("[project]/gymboost-console-standalone/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},20835,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(26329);a.n(d("[project]/gymboost-console-standalone/node_modules/next/dist/client/components/builtin/global-error.js"))},27034,a=>{"use strict";a.i(68446);var b=a.i(20835);a.n(b)}];
+
+//# sourceMappingURL=5207a_next_dist_client_components_builtin_global-error_1ab90fd2.js.map

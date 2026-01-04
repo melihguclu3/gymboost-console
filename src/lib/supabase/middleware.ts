@@ -26,8 +26,6 @@ export async function updateSession(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
     // Console projesi standalone olduğu için her yer Master Area'dır.
-    const isMasterArea = true;
-
     // 1. MASTER ALAN TANIMLAMALARI
     const isMasterGate = path === '/gate';
     const isMasterLogin = path === '/login';
@@ -88,70 +86,6 @@ export async function updateSession(request: NextRequest) {
                 .from('admin_verification_sessions')
                 .update({ last_used_at: new Date().toISOString() })
                 .eq('id', session.id);
-        }
-    }
-    return supabaseResponse;
-
-    // 3. NORMAL KULLANICI ROTALARI
-    const isAdminRoute = path.startsWith('/admin');
-    const isTrainerRoute = path.startsWith('/trainer');
-    const isMemberRoute = path.startsWith('/dashboard') || path.startsWith('/profile') || path.startsWith('/workouts') || path.startsWith('/history') || path.startsWith('/scan');
-    const isAuthRoute = path.startsWith('/login') || path.startsWith('/register');
-    const isAccountDisabledPage = path === '/account-disabled';
-
-    if (!user && (isMemberRoute || isAdminRoute || isTrainerRoute)) {
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    if (user) {
-        const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-        const { data: userData } = await supabaseAdmin
-            .from('users')
-            .select('role, email, gym_id')
-            .eq('id', user.id)
-            .single();
-
-        let userRole = userData?.role;
-        // Master email kontrolü
-        if (userData?.email && masterEmails.includes(userData.email)) {
-            userRole = 'super_admin';
-        }
-
-        if (
-            userRole === 'admin' ||
-            userRole === 'trainer' ||
-            (userRole === 'super_admin' && isAdminRoute)
-        ) {
-            const { data: gymData } = await supabaseAdmin
-                .from('gyms')
-                .select('settings')
-                .eq('id', userData?.gym_id)
-                .single();
-
-            const gymStatus = gymData?.settings?.status;
-            if ((gymStatus === 'archived' || gymStatus === 'suspended') && !isAccountDisabledPage) {
-                return NextResponse.redirect(new URL('/account-disabled', request.url));
-            }
-        }
-
-        if (isAuthRoute) {
-            // super_admin /login'e erişebilsin (test amaçlı farklı hesapla giriş için)
-            if (userRole === 'admin') return NextResponse.redirect(new URL('/admin', request.url));
-            if (userRole === 'trainer') return NextResponse.redirect(new URL('/trainer', request.url));
-            if (userRole !== 'super_admin') return NextResponse.redirect(new URL('/dashboard', request.url));
-        }
-
-        if (isAdminRoute && userRole !== 'admin' && userRole !== 'super_admin') {
-            const target = userRole === 'trainer' ? '/trainer' : '/dashboard';
-            return NextResponse.redirect(new URL(target, request.url));
-        }
-        if (isTrainerRoute && userRole !== 'trainer') {
-            const target = userRole === 'admin' ? '/admin' : userRole === 'super_admin' ? '/melihinozelalani' : '/dashboard';
-            return NextResponse.redirect(new URL(target, request.url));
-        }
-        if (isMemberRoute && (userRole === 'admin' || userRole === 'super_admin' || userRole === 'trainer')) {
-            const target = userRole === 'super_admin' ? '/melihinozelalani' : userRole === 'trainer' ? '/trainer' : '/admin';
-            return NextResponse.redirect(new URL(target, request.url));
         }
     }
 

@@ -1,0 +1,54 @@
+{
+  "sorted_middleware": [
+    "/icon-512/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/icon-512/route": {
+      "files": [
+        "server/middleware-build-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "required-server-files.js",
+        "server/server-reference-manifest.js",
+        "server/app/icon-512/route_client-reference-manifest.js",
+        "server/edge/chunks/514ab_ost-console-standalone__next-internal_server_app_icon-512_route_actions_6361bf1b.js",
+        "server/edge/chunks/[root-of-the-server]__8990e5c8._.js",
+        "server/edge/chunks/5207a_next_dist_14f5ee4c._.js",
+        "server/edge/chunks/5207a_next_dist_compiled_@vercel_og_84ce982b._.js",
+        "server/edge/chunks/805a5_next_dist_esm_build_templates_edge-wrapper_f065cd49.js"
+      ],
+      "name": "app/icon-512/route",
+      "page": "/icon-512/route",
+      "matchers": [
+        {
+          "regexp": "^/icon-512(?:/)?$",
+          "originalSource": "/icon-512"
+        }
+      ],
+      "wasm": [
+        {
+          "name": "wasm_fdb56e4cc5936d29",
+          "filePath": "server/edge/chunks/5207a_next_dist_compiled_@vercel_og_resvg_23ace1ce.wasm"
+        },
+        {
+          "name": "wasm_1ccdc983b1fd9f87",
+          "filePath": "server/edge/chunks/5207a_next_dist_compiled_@vercel_og_yoga_23ace1ce.wasm"
+        }
+      ],
+      "assets": [
+        {
+          "name": "server/edge/assets/noto-sans-v27-latin-regular.bdfa676c.ttf",
+          "filePath": "server/edge/assets/noto-sans-v27-latin-regular.bdfa676c.ttf"
+        }
+      ],
+      "env": {
+        "__NEXT_BUILD_ID": "5qSUzrKMyKYYAS4HN9J_1",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "Sj5zSPbR9MHwNaO08DwEMb2Ub6ltJwaXFyDDv0PJauY=",
+        "__NEXT_PREVIEW_MODE_ID": "5819095b5a0a4e39c645eb1d4ca75c25",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "8a9c3a5001eae5f63232cb5fed747ef23d6d1d9e2e28b39e2bdf9543161fb2bd",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "a3e1f4969739eece3b22dd4847bfb9e613ec658b739f410b4a277cd6c6f0d856"
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "/(console)/gyms/[id]/page": "app/(console)/gyms/[id]/page.js",
+  "/(console)/gyms/page": "app/(console)/gyms/page.js",
+  "/(console)/health/logs/page": "app/(console)/health/logs/page.js",
+  "/(console)/health/page": "app/(console)/health/page.js",
+  "/(console)/page": "app/(console)/page.js",
+  "/(console)/revenue/page": "app/(console)/revenue/page.js",
+  "/(console)/settings/page": "app/(console)/settings/page.js",
+  "/(console)/users/page": "app/(console)/users/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/gate/page": "app/gate/page.js",
+  "/icon-192/route": "app-edge-has-no-entrypoint",
+  "/icon-512/route": "app-edge-has-no-entrypoint",
+  "/login/page": "app/login/page.js",
+  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
+  "/verify/page": "app/verify/page.js"
+}

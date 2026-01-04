@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(console)/layout,_N_T_/(console)/health/layout,_N_T_/(console)/health/page,_N_T_/health"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KGNvbnNvbGUp/health/__PAGE__",
+    "/!KGNvbnNvbGUp/health",
+    "/!KGNvbnNvbGUp",
+    "/_index",
+    "/_head"
+  ]
+}

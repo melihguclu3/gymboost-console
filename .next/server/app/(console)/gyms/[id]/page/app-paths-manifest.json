@@ -1,0 +1,3 @@
+{
+  "/(console)/gyms/[id]/page": "app/(console)/gyms/[id]/page.js"
+}
