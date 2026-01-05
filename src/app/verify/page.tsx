@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input } from '@/components/ui';
-import { ShieldCheck, Mail, Lock, ArrowRight, Smartphone, Sparkles, Loader2, RefreshCcw, Send } from 'lucide-react';
+import { Card, Button } from '@/components/ui';
+import { ShieldCheck, Mail, ArrowRight, RefreshCcw, Send, Command, LockKeyhole } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SuperVerifyPage() {
     const router = useRouter();
@@ -29,7 +30,6 @@ export default function SuperVerifyPage() {
     const [countdown, setCountdown] = useState(0);
     const [resendCountdown, setResendCountdown] = useState(0);
 
-    // Countdown timer effect
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (countdown > 0) {
@@ -118,86 +118,175 @@ export default function SuperVerifyPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden text-white">
-            {/* Background Decor */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-500/10 blur-[120px] rounded-full" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-red-500/10 blur-[120px] rounded-full" />
+        <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-orange-500/20">
+            {/* Background Grid & Glows */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none" />
+            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-orange-500/5 blur-[150px] rounded-full" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-500/5 blur-[150px] rounded-full" />
 
-            <Card className="w-full max-w-md bg-zinc-950 border-white/10 shadow-2xl rounded-[3rem] overflow-hidden relative z-10 p-8">
-                <div className="text-center mb-10">
-                    <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-500/20 rotate-3 transition-transform duration-500">
-                        <ShieldCheck className="w-10 h-10 text-white" />
+            <Card className="w-full max-w-md bg-zinc-950 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-[2rem] overflow-hidden relative z-10 backdrop-blur-xl">
+                {/* Header Section */}
+                <div className="p-8 pb-0 text-center relative">
+                    <div className="w-24 h-24 mx-auto mb-6 relative group">
+                        <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full group-hover:bg-orange-500/30 transition-colors" />
+                        <div className="relative w-full h-full bg-zinc-900 border border-white/10 rounded-[1.5rem] flex items-center justify-center shadow-2xl group-hover:scale-105 transition-transform duration-300">
+                            <AnimatePresence mode="wait">
+                                {step === 'request' ? (
+                                    <motion.div
+                                        key="lock"
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0.8, opacity: 0 }}
+                                    >
+                                        <LockKeyhole className="w-10 h-10 text-orange-500" strokeWidth={1.5} />
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="shield"
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0.8, opacity: 0 }}
+                                    >
+                                        <ShieldCheck className="w-10 h-10 text-emerald-500" strokeWidth={1.5} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        {/* Status Dot */}
+                        <div className={`absolute -right-2 -top-2 w-4 h-4 rounded-full border-2 border-zinc-950 flex items-center justify-center ${step === 'verify' ? 'bg-emerald-500' : 'bg-orange-500'}`}>
+                            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        </div>
                     </div>
-                    <h1 className="text-2xl font-black text-white tracking-tight uppercase text-center">Güvenlik Doğrulaması</h1>
-                    <p className="text-zinc-500 text-sm font-bold mt-2 text-center tracking-widest uppercase opacity-80">Sistem Sahibi Doğrulaması</p>
+
+                    <h1 className="text-2xl font-black text-white tracking-tight uppercase mb-2">Güvenlik Doğrulaması</h1>
+                    <div className="flex items-center justify-center gap-2">
+                        <div className="h-[1px] w-8 bg-zinc-800" />
+                        <p className="text-[10px] font-mono font-black text-zinc-500 uppercase tracking-widest">Sistem Sahibi Erişimi</p>
+                        <div className="h-[1px] w-8 bg-zinc-800" />
+                    </div>
                 </div>
 
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-2xl text-red-400 text-xs font-bold text-center animate-shake">
-                        {error}
-                    </div>
-                )}
+                <div className="p-8">
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-6 p-4 bg-red-500/5 border border-red-500/20 rounded-xl flex items-center gap-3"
+                        >
+                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                            <p className="text-red-400 text-xs font-bold leading-relaxed">{error}</p>
+                        </motion.div>
+                    )}
 
-                {step === 'request' ? (
-                    <div className="space-y-6">
-                        <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5 text-center text-white">
-                            <Mail className="w-8 h-8 text-zinc-600 mx-auto mb-4" />
-                            <p className="text-zinc-400 text-sm leading-relaxed text-center">
-                                Sisteme tam yetki ile erişmek için <span className="text-white font-bold">kayıtlı e-posta adresinize</span> bir güvenlik kodu gönderilecektir.
-                            </p>
-                        </div>
-                        <Button
-                            onClick={sendEmailCode}
-                            isLoading={isLoading}
-                            className="w-full h-16 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-white/5 text-xs text-center"
-                        >
-                            <Send className="w-4 h-4 mr-2" /> E-posta Kodu Gönder
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 text-center block">Doğrulama Kodu</label>
-                            <input
-                                type="text"
-                                maxLength={6}
-                                placeholder="000 000"
-                                value={code}
-                                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                                className={`w-full p-5 bg-zinc-900 border rounded-2xl text-white text-3xl font-black tracking-[0.5em] text-center outline-none transition-all ${countdown > 0 ? 'border-orange-500/50 focus:border-orange-500' : 'border-red-500/50 opacity-50 cursor-not-allowed'}`}
-                                disabled={countdown === 0}
-                            />
-                            {countdown > 0 ? (
-                                <p className="text-center text-xs font-bold text-orange-500 animate-pulse">
-                                    Kalan Süre: {countdown} saniye
-                                </p>
-                            ) : (
-                                <p className="text-center text-xs font-bold text-red-500">
-                                    Süre doldu.
-                                </p>
-                            )}
-                        </div>
-                        <Button
-                            onClick={handleVerify}
-                            disabled={countdown === 0 || isLoading}
-                            className="w-full h-16 bg-gradient-to-r from-orange-600 to-red-600 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-orange-500/30 text-xs text-center disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isLoading ? 'Kontrol Ediliyor...' : 'Sistemi Aç'} <ArrowRight className="w-5 h-5 ml-2" />
-                        </Button>
-                        <button
-                            onClick={() => sendEmailCode()} // Yeniden başlat
-                            disabled={resendCountdown > 0}
-                            className={`w-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer ${resendCountdown > 0 ? 'text-zinc-600 opacity-50' : 'text-white hover:text-orange-500'}`}
-                        >
-                            <RefreshCcw className="w-3 h-3" /> {resendCountdown > 0 ? `Tekrar göndermek için ${resendCountdown} sn` : 'Yeni Kod İste'}
-                        </button>
-                    </div>
-                )}
+                    <AnimatePresence mode="wait">
+                        {step === 'request' ? (
+                            <motion.div
+                                key="step-request"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-6"
+                            >
+                                <div className="p-5 bg-zinc-900/50 border border-white/5 rounded-2xl flex gap-4 items-start">
+                                    <div className="p-2.5 bg-zinc-800 rounded-lg shrink-0">
+                                        <Mail className="w-5 h-5 text-zinc-400" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-white uppercase tracking-wide">Doğrulama Gerekli</p>
+                                        <p className="text-xs text-zinc-500 leading-relaxed">
+                                            Güvenlik protokolü gereği, sistem erişimi için kayıtlı e-posta adresinize tek kullanımlık kod gönderilecektir.
+                                        </p>
+                                    </div>
+                                </div>
 
-                <div className="mt-10 pt-8 border-t border-white/5 text-center text-white">
-                    <p className="text-[9px] text-zinc-700 font-black uppercase tracking-[0.2em] text-center">
-                        GymBoost Security Protocol v2.2
-                    </p>
+                                <Button
+                                    onClick={sendEmailCode}
+                                    isLoading={isLoading}
+                                    className="w-full h-14 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-widest rounded-xl text-xs flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    {!isLoading && <Send className="w-4 h-4" />}
+                                    <span>KOD GÖNDER</span>
+                                </Button>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="step-verify"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-end px-1">
+                                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Güvenlik Kodu</label>
+                                        {countdown > 0 ? (
+                                            <span className="text-[10px] font-mono font-bold text-orange-500 animate-pulse">
+                                                {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-bold text-red-500">SÜRE DOLDU</span>
+                                        )}
+                                    </div>
+                                    <div className="relative group">
+                                        <input
+                                            type="text"
+                                            maxLength={6}
+                                            placeholder="XXXXXX"
+                                            value={code}
+                                            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                                            className={`w-full h-20 bg-zinc-900/50 border text-center text-4xl font-mono font-bold tracking-[0.5em] text-white rounded-2xl outline-none transition-all placeholder:text-zinc-800
+                                                ${countdown > 0
+                                                    ? 'border-white/10 focus:border-orange-500/50 focus:shadow-[0_0_30px_rgba(249,115,22,0.1)]'
+                                                    : 'border-red-500/30 text-red-500/50 cursor-not-allowed'
+                                                }`}
+                                            disabled={countdown === 0}
+                                            autoFocus
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <Button
+                                        onClick={handleVerify}
+                                        disabled={countdown === 0 || isLoading || code.length !== 6}
+                                        className="w-full h-14 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-black uppercase tracking-widest rounded-xl text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(249,115,22,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+                                    >
+                                        {isLoading ? (
+                                            'DOĞRULANIYOR...'
+                                        ) : (
+                                            <>
+                                                <span>ERİŞİM İZNİ VER</span>
+                                                <ArrowRight className="w-4 h-4" />
+                                            </>
+                                        )}
+                                    </Button>
+
+                                    <button
+                                        onClick={() => sendEmailCode()}
+                                        disabled={resendCountdown > 0}
+                                        className={`w-full py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors rounded-lg hover:bg-white/5 disabled:hover:bg-transparent
+                                            ${resendCountdown > 0 ? 'text-zinc-600 cursor-not-allowed' : 'text-zinc-400 hover:text-white cursor-pointer'}`}
+                                    >
+                                        <RefreshCcw className={`w-3 h-3 ${resendCountdown === 0 && 'group-hover:rotate-180 transition-transform'}`} />
+                                        {resendCountdown > 0 ? `YENİ KOD İÇİN ${resendCountdown}sn` : 'KOD GELMEDİ Mİ? TEKRAR GÖNDER'}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* Footer Section */}
+                <div className="px-8 py-6 bg-zinc-950/50 border-t border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Güvenli Bağlantı</span>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-50">
+                        <Command className="w-3 h-3 text-zinc-600" />
+                        <span className="text-[9px] font-mono font-bold text-zinc-600">OTURUM: {Math.random().toString(36).substring(7).toUpperCase()}</span>
+                    </div>
                 </div>
             </Card>
         </div>

@@ -62,9 +62,9 @@ const CATEGORY_MAP: Record<string, { label: string, color: string }> = {
 // --- COMPONENTS ---
 const TelemetryLine = ({ log, index }: { log: any, index: number }) => {
     const catInfo = CATEGORY_MAP[log.entity_type] || { label: log.entity_type?.toUpperCase() || 'CORE', color: 'text-zinc-500 bg-zinc-500/5 border-zinc-500/10' };
-    
+
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, x: -5 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.03 }}
@@ -315,15 +315,15 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
 
 
-                        toast.success('Salon yapılandırması başarıyla güncellendi.');
+            toast.success('Salon yapılandırması başarıyla güncellendi.');
 
 
 
-                        setShowConfigModal(false);
+            setShowConfigModal(false);
 
 
 
-                        loadGymData();
+            loadGymData();
 
         } catch (error: any) {
 
@@ -344,15 +344,15 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
             <div className="w-8 h-8 border-2 border-white/10 border-t-orange-500 rounded-full animate-spin" />
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest animate-pulse">Scanning Node Structure...</p>
+            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest animate-pulse">Salon Yapısı Taranıyor...</p>
         </div>
     );
 
     if (!gym) return (
         <div className="text-center py-20 bg-zinc-950 border border-dashed border-white/10 rounded-[3rem]">
             <ShieldCheck className="w-12 h-12 text-zinc-800 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white uppercase tracking-tighter">Node Not Found</h2>
-            <Button variant="secondary" onClick={() => router.back()} className="mt-6">RETURN TO HQ</Button>
+            <h2 className="text-xl font-bold text-white uppercase tracking-tighter">Salon Bulunamadı</h2>
+            <Button variant="secondary" onClick={() => router.back()} className="mt-6">MERKEZE DÖN</Button>
         </div>
     );
 
@@ -365,18 +365,18 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowConfigModal(false)} className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
                         <motion.div initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }} className="w-full max-w-4xl bg-[#050505] border border-white/10 rounded-[2.5rem] p-12 relative z-10 shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden max-h-[90vh] overflow-y-auto hide-scrollbar">
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
-                            
+
                             <div className="flex items-center justify-between mb-16">
                                 <div className="flex items-center gap-6">
                                     <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 border border-orange-500/20 shadow-lg shadow-orange-500/5">
                                         <Settings className="w-8 h-8" />
                                     </div>
-                                                            <div>
-                                                                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Salon Yapılandırması</h2>
-                                                                <p className="text-[11px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1.5 flex items-center gap-2">
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> Doğrudan Erişim: {gym.name}
-                                                                </p>
-                                                            </div>                                </div>
+                                    <div>
+                                        <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Salon Yapılandırması</h2>
+                                        <p className="text-[11px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1.5 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> Doğrudan Erişim: {gym.name}
+                                        </p>
+                                    </div>                                </div>
                                 <button onClick={() => setShowConfigModal(false)} className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/5 rounded-2xl text-zinc-500 hover:text-white hover:bg-white/10 transition-all cursor-pointer"><X className="w-6 h-6" /></button>
                             </div>
 
@@ -385,7 +385,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                 <div className="space-y-8">
                                     <div className="flex items-center gap-4">
                                         <div className="h-[1px] flex-1 bg-white/[0.04]" />
-                                        <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Sub-System Modules</h3>
+                                        <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Alt-Sistem Modülleri</h3>
                                         <div className="h-[1px] flex-1 bg-white/[0.04]" />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -394,13 +394,13 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                             { id: 'is_inventory_enabled', label: 'INVENTORY V4', icon: Package, desc: 'Global SKU Tracking' },
                                             { id: 'is_pt_enabled', label: 'TRAINER HUB', icon: Dumbbell, desc: 'Personnel Management' },
                                         ].map((module) => (
-                                            <div 
+                                            <div
                                                 key={module.id}
-                                                onClick={() => setConfigForm({...configForm, [module.id]: !(configForm as any)[module.id]})}
+                                                onClick={() => setConfigForm({ ...configForm, [module.id]: !(configForm as any)[module.id] })}
                                                 className={cn(
                                                     "p-6 rounded-[2rem] border transition-all cursor-pointer group relative overflow-hidden",
-                                                    (configForm as any)[module.id] 
-                                                        ? "bg-orange-500/[0.03] border-orange-500/30 shadow-lg shadow-orange-500/5" 
+                                                    (configForm as any)[module.id]
+                                                        ? "bg-orange-500/[0.03] border-orange-500/30 shadow-lg shadow-orange-500/5"
                                                         : "bg-white/[0.02] border-white/[0.04] opacity-40 hover:opacity-100 grayscale hover:grayscale-0"
                                                 )}
                                             >
@@ -412,9 +412,9 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                                         "w-10 h-5 rounded-full relative transition-colors border",
                                                         (configForm as any)[module.id] ? "bg-orange-500 border-orange-500/50" : "bg-zinc-900 border-white/5"
                                                     )}>
-                                                        <motion.div 
+                                                        <motion.div
                                                             animate={{ x: (configForm as any)[module.id] ? 20 : 0 }}
-                                                            className="absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-xl" 
+                                                            className="absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-xl"
                                                         />
                                                     </div>
                                                 </div>
@@ -429,32 +429,32 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                 <div className="space-y-8">
                                     <div className="flex items-center gap-4">
                                         <div className="h-[1px] flex-1 bg-white/[0.04]" />
-                                        <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Resource Thresholds</h3>
+                                        <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Kaynak Eşikleri</h3>
                                         <div className="h-[1px] flex-1 bg-white/[0.04]" />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center px-1">
-                                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Max Member Capacity</label>
-                                                <span className="text-[10px] font-mono text-orange-500 font-bold">Hard Limit</span>
+                                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Maksimum Üye Kapasitesi</label>
+                                                <span className="text-[10px] font-mono text-orange-500 font-bold">Kesin Sınır</span>
                                             </div>
-                                            <input 
-                                                type="number" 
-                                                value={configForm.max_members} 
-                                                onChange={e => setConfigForm({...configForm, max_members: parseInt(e.target.value) || 0})} 
-                                                className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-base font-mono text-white focus:outline-none focus:border-orange-500/50 transition-all focus:bg-white/[0.04]" 
+                                            <input
+                                                type="number"
+                                                value={configForm.max_members}
+                                                onChange={e => setConfigForm({ ...configForm, max_members: parseInt(e.target.value) || 0 })}
+                                                className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-base font-mono text-white focus:outline-none focus:border-orange-500/50 transition-all focus:bg-white/[0.04]"
                                             />
                                         </div>
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center px-1">
-                                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Trainer Cluster Limit</label>
-                                                <span className="text-[10px] font-mono text-blue-500 font-bold">Soft Cap</span>
+                                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Eğitmen Kümesi Limiti</label>
+                                                <span className="text-[10px] font-mono text-blue-500 font-bold">Esnek Üst Sınır</span>
                                             </div>
-                                            <input 
-                                                type="number" 
-                                                value={configForm.max_trainers} 
-                                                onChange={e => setConfigForm({...configForm, max_trainers: parseInt(e.target.value) || 0})} 
-                                                className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-base font-mono text-white focus:outline-none focus:border-blue-500/50 transition-all focus:bg-white/[0.04]" 
+                                            <input
+                                                type="number"
+                                                value={configForm.max_trainers}
+                                                onChange={e => setConfigForm({ ...configForm, max_trainers: parseInt(e.target.value) || 0 })}
+                                                className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-base font-mono text-white focus:outline-none focus:border-blue-500/50 transition-all focus:bg-white/[0.04]"
                                             />
                                         </div>
                                     </div>
@@ -462,10 +462,10 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
                                 <div className="flex items-center gap-6 pt-10">
                                     <Button type="button" onClick={() => setShowConfigModal(false)} className="flex-1 h-16 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-[11px] font-black tracking-[0.3em] uppercase">
-                                        ABORT_CHANGES
+                                        DEĞİŞİKLİKLERİ İPTAL ET
                                     </Button>
                                     <Button type="submit" isLoading={configLoading} variant="primary" className="flex-[2] h-16 rounded-2xl text-[11px] font-black tracking-[0.3em] uppercase shadow-2xl shadow-orange-500/20">
-                                        EXECUTE_CONFIGURATION
+                                        YAPILDIRMAYI UYGULA
                                     </Button>
                                 </div>
                             </form>
@@ -487,18 +487,18 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                             <h1 className="text-4xl font-black text-white tracking-tighter uppercase">{gym.name}</h1>
                             <div className="flex items-center gap-2.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/20 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
-                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Link: Operational</span>
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Bağlantı: Aktif</span>
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-8 text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
                             <div className="flex items-center gap-2 text-zinc-400 font-mono lowercase italic bg-white/5 px-3 py-1 rounded-lg border border-white/5">
-                                <Globe className="w-3.5 h-3.5 text-zinc-600" /> {gym.email || 'node_offline'}
+                                <Globe className="w-3.5 h-3.5 text-zinc-600" /> {gym.email || 'çevrimdışı'}
                             </div>
-                            <div 
+                            <div
                                 onClick={() => { navigator.clipboard.writeText(gym.id); toast.success('Salon ID kopyalandı.'); }}
                                 className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors group"
                             >
-                                <Lock className="w-3.5 h-3.5 text-zinc-700 group-hover:text-orange-500 transition-colors" /> 
+                                <Lock className="w-3.5 h-3.5 text-zinc-700 group-hover:text-orange-500 transition-colors" />
                                 <span className="font-mono">UUID::{gym.id.slice(0, 12)}...</span>
                             </div>
                             <div className="flex items-center gap-2 text-orange-500/80 bg-orange-500/5 px-3 py-1 rounded-lg border border-orange-500/10">
@@ -537,7 +537,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                     <div className="flex items-end gap-2 h-20">
                         {[40, 70, 45, 90, 65, 80, 100, 85, 95, 60, 75, 85].map((h, i) => (
                             <div key={i} className="flex-1 bg-white/[0.02] rounded-t-lg h-full relative overflow-hidden">
-                                <motion.div 
+                                <motion.div
                                     initial={{ height: 0 }}
                                     animate={{ height: `${h}%` }}
                                     className="absolute bottom-0 left-0 w-full bg-emerald-500/20 border-t border-emerald-500/40 rounded-t-lg"
@@ -577,12 +577,12 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                         <div>
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Salon Telemetri Akışı</h3>
                             <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.3em] mt-1.5 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Çekirdek Bağlantısı: Aktif ve Operasyonel
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Çekirdek Bağlantısı: Aktif
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Button 
+                        <Button
                             onClick={() => router.push(`/health/logs?gymId=${gymId}`)}
                             className="bg-zinc-950 border border-white/5 hover:border-orange-500/30 hover:text-orange-500 rounded-xl h-12 px-6 font-black text-[10px] tracking-[0.2em] uppercase transition-all"
                         >
@@ -600,7 +600,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
                 <Card className="bg-[#020202] border-white/[0.04] rounded-[2.5rem] overflow-hidden shadow-2xl relative">
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-                    
+
                     {/* Terminal Header */}
                     <div className="bg-white/[0.02] px-8 py-4 border-b border-white/[0.04] flex items-center justify-between relative z-10">
                         <div className="flex items-center gap-6">
@@ -609,7 +609,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                 <div className="w-3 h-3 rounded-full bg-amber-500/10 border border-amber-500/30" />
                                 <div className="w-3 h-3 rounded-full bg-emerald-500/10 border border-emerald-500/30" />
                             </div>
-                            <span className="text-[10px] font-mono text-zinc-600 tracking-[0.2em] uppercase">OTURUM KODU :: {Math.random().toString(36).substring(7).toUpperCase()}</span>
+                            <span className="text-[10px] font-mono text-zinc-600 tracking-[0.2em] uppercase">OTURUM :: {Math.random().toString(36).substring(7).toUpperCase()}</span>
                         </div>
                         <div className="flex items-center gap-6 text-zinc-700">
                             <Search className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
@@ -630,14 +630,14 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                     <span className="text-[9px] text-zinc-800 tabular-nums w-6">{String(logs.length + 1).padStart(2, '0')}</span>
                                     <div className="flex items-center gap-4">
                                         <div className="w-2.5 h-5 bg-orange-500 animate-pulse shadow-[0_0_15px_orange]" />
-                                        <span className="text-[11px] text-orange-500/70 font-black uppercase tracking-[0.2em] animate-pulse">Awaiting global telemetry burst...</span>
+                                        <span className="text-[11px] text-orange-500/70 font-black uppercase tracking-[0.2em] animate-pulse">Küresel telemetri patlaması bekleniyor...</span>
                                     </div>
                                 </div>
                             </div>
                         ) : (
                             <div className="h-full flex flex-col items-center justify-center py-40 opacity-10">
                                 <Activity className="w-20 h-20 mb-6 animate-pulse" />
-                                <p className="text-sm font-black uppercase tracking-[0.4em]">No Active Telemetry</p>
+                                <p className="text-sm font-black uppercase tracking-[0.4em]">Aktif Telemetri Yok</p>
                             </div>
                         )}
                     </div>
@@ -645,13 +645,13 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                     {/* Terminal Footer */}
                     <div className="bg-white/[0.01] px-8 py-3 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-black text-zinc-700 uppercase tracking-[0.3em] relative z-10">
                         <div className="flex gap-10">
-                            <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-emerald-500" /> Kernel: Operational</span>
-                            <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-blue-500" /> Buffer: 100%</span>
+                            <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-emerald-500" /> Çekirdek: Aktif</span>
+                            <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-blue-500" /> Tampon: 100%</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <span>Region: TR-WEST-1</span>
+                            <span>Bölge: TR-BATI-1</span>
                             <div className="h-3 w-[1px] bg-white/5 mx-2" />
-                            <span className="text-zinc-500">Node_ID: {gymId.slice(0, 8).toUpperCase()}</span>
+                            <span className="text-zinc-500">Salon_ID: {gymId.slice(0, 8).toUpperCase()}</span>
                         </div>
                     </div>
                 </Card>

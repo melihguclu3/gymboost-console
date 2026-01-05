@@ -33,9 +33,9 @@ import { Suspense } from 'react';
 
 // --- TRANSLATIONS ---
 const CATEGORY_MAP: Record<string, string> = {
-    'gyms': 'Sistem Ayarları', 'system_settings': 'Sistem Ayarları', 'users': 'Üye & Eğitmen', 
-    'memberships': 'Üyelikler', 'payments': 'Finansal', 'products': 'Mağaza', 
-    'inventory': 'Stok', 'check_ins': 'Giriş/Çıkış', 'workout_sessions': 'Antrenman', 
+    'gyms': 'Sistem Ayarları', 'system_settings': 'Sistem Ayarları', 'users': 'Üye & Eğitmen',
+    'memberships': 'Üyelikler', 'payments': 'Finansal', 'products': 'Mağaza',
+    'inventory': 'Stok', 'check_ins': 'Giriş/Çıkış', 'workout_sessions': 'Antrenman',
     'auth': 'Güvenlik', 'measurements': 'Ölçümler', 'nutrition': 'Beslenme',
     'appointments': 'Randevular', 'announcements': 'Duyurular',
     'ai_assistant': 'AI Asistan', 'rentals': 'Alan Kiralama'
@@ -62,7 +62,7 @@ function LoggerContent() {
         try {
             const { data: gymsData } = await supabase.from('gyms').select('id, name').order('name');
             if (gymsData) setGyms(gymsData);
-            
+
             // Eğer URL'den gymId geldiyse onu set et
             if (gymIdParam) {
                 setSelectedGymId(gymIdParam);
@@ -111,11 +111,11 @@ function LoggerContent() {
                         <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">Salonlar Arası Aktivite Akışı</p>
                     </div>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative group">
                         <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                        <select 
+                        <select
                             value={selectedGymId}
                             onChange={(e) => setSelectedGymId(e.target.value)}
                             className="bg-zinc-900 border border-white/10 rounded-xl pl-12 pr-10 py-3 text-xs font-bold text-white uppercase outline-none focus:border-orange-500/50 appearance-none cursor-pointer"
@@ -160,7 +160,7 @@ function LoggerContent() {
 
                 <div className="relative group flex-1 max-w-sm">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-orange-500 transition-colors" />
-                    <input 
+                    <input
                         placeholder="ANAHTAR KELİME İLE ARA..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -202,8 +202,8 @@ function LoggerContent() {
                                     <div className={cn(
                                         "w-[2px] h-10 rounded-full shrink-0",
                                         log.actor_role === 'admin' || log.actor_role === 'super_admin' ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
-                                        log.actor_role === 'trainer' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
-                                        log.actor_role === 'member' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-zinc-700'
+                                            log.actor_role === 'trainer' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
+                                                log.actor_role === 'member' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-zinc-700'
                                     )} />
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-4 mb-1.5">
@@ -213,8 +213,8 @@ function LoggerContent() {
                                             <span className={cn(
                                                 "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
                                                 log.actor_role === 'admin' ? 'bg-orange-500/10 text-orange-500' :
-                                                log.actor_role === 'trainer' ? 'bg-blue-500/10 text-blue-500' :
-                                                log.actor_role === 'member' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-500'
+                                                    log.actor_role === 'trainer' ? 'bg-blue-500/10 text-blue-500' :
+                                                        log.actor_role === 'member' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-500'
                                             )}>
                                                 {ROLE_MAP[log.actor_role] || 'SİSTEM'}
                                             </span>
@@ -223,9 +223,9 @@ function LoggerContent() {
                                                     {maskEmail(log.user_email)}
                                                 </span>
                                             )}
-                                            {log.gym_name && (
-                                                <span className="flex items-center gap-1 text-[9px] font-bold text-zinc-600 uppercase tracking-tight">
-                                                    <Building2 className="w-3 h-3" /> {log.gym_name}
+                                            {log.gym_id && gyms.find(g => g.id === log.gym_id)?.name && (
+                                                <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20 uppercase tracking-tight shadow-lg shadow-blue-500/5">
+                                                    <Building2 className="w-3 h-3" /> {gyms.find(g => g.id === log.gym_id)?.name}
                                                 </span>
                                             )}
                                         </div>

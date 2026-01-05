@@ -42,13 +42,13 @@ export default function SuperAdminPage() {
     const [currentLatency, setRealLatency] = useState<number>(0);
     const [coords, setCoords] = useState({ lat: '0.0000', lon: '0.0000' });
     const [uptime, setUptime] = useState(100);
-    const [sysMetrics, setSysMetrics] = useState({ cpu: 0, ram: 0 });
-    const [vercelInfo, setVercelInfo] = useState({ 
-        region: 'Yükleniyor...', 
-        version: 'v2.4.0', 
-        env: 'production' 
+    const [sysMetrics, setSysMetrics] = useState({ ram: 0 });
+    const [vercelInfo, setVercelInfo] = useState({
+        region: 'Yükleniyor...',
+        version: 'Yükleniyor...',
+        env: 'production'
     });
-    
+
     const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
     const [announcementMsg, setAnnouncementMsg] = useState('');
     const [announcementLoading, setAnnouncementLoading] = useState(false);
@@ -60,26 +60,40 @@ export default function SuperAdminPage() {
         trialGyms: 0,
         todayCheckIns: 0,
         lowStockAlerts: 0,
-        healthWarnings: 0
+        healthWarnings: 0,
+        revenueChange: 0, // Yeni: gelir değişim yüzdesi
+        last10DaysCheckIns: [] as number[], // Yeni: son 10 günün check-in verileri
+        todayCheckInGoal: 100 // Hedef check-in sayısı
     });
+
+    // Her salon için uptime metriği
+    const [gymUptimes, setGymUptimes] = useState<Record<string, number>>({});
 
     const supabase = createClient();
 
     const fetchLocation = useCallback(async () => {
         try {
             const res = await fetch('https://ipapi.co/json/');
+            if (!res.ok) throw new Error('Fetch failed');
             const data = await res.json();
             if (data.latitude) {
                 setCoords({ lat: data.latitude.toFixed(4), lon: data.longitude.toFixed(4) });
             }
-        } catch (e) { console.error(e); }
+        } catch {
+            setCoords({ lat: '41.0082', lon: '28.9784' });
+        }
     }, []);
 
     const loadVercelInfo = useCallback(() => {
         const isDev = process.env.NODE_ENV === 'development';
+        // Gerçek Vercel SHA veya package version
+        const version = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
+            ? `SÜRÜM::${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7).toUpperCase()}`
+            : 'v2.4.0';
+
         setVercelInfo({
-            region: isDev ? 'Yerel Sunucu' : 'fra1 (Frankfurt)',
-            version: 'SHA::' + (Math.random().toString(36).substring(7).toUpperCase()),
+            region: isDev ? 'Yerel Sunucu' : (process.env.NEXT_PUBLIC_VERCEL_REGION || 'fra1 (Frankfurt)'),
+            version: version,
             env: process.env.NODE_ENV || 'production'
         });
     }, []);
@@ -91,7 +105,7 @@ export default function SuperAdminPage() {
             .select('*', { count: 'exact', head: true })
             .eq('event_type', 'error')
             .gt('created_at', sevenDaysAgo);
-        
+
         const { count: totalCount } = await supabase
             .from('system_logs')
             .select('*', { count: 'exact', head: true })
@@ -108,8 +122,7 @@ export default function SuperAdminPage() {
             const m = (performance as any).memory;
             const ramUsage = Math.round((m.usedJSHeapSize / m.jsHeapSizeLimit) * 100);
             setSysMetrics({
-                ram: ramUsage,
-                cpu: Math.floor(Math.random() * (15 - 5) + 5)
+                ram: ramUsage
             });
         }
     }, []);
@@ -152,32 +165,112 @@ export default function SuperAdminPage() {
         }
     }, [supabase]);
 
+    // Her salon için uptime hesaplama
+    const calculateGymUptimes = useCallback(async (gymIds: string[]) => {
+        const uptimes: Record<string, number> = {};
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        for (const gymId of gymIds) {
+            const { count: errorCount } = await supabase
+                .from('system_logs')
+                .select('*', { count: 'exact', head: true })
+                .eq('event_type', 'error')
+                .eq('gym_id', gymId)
+                .gt('created_at', sevenDaysAgo);
+
+            const { count: totalCount } = await supabase
+                .from('system_logs')
+                .select('*', { count: 'exact', head: true })
+                .eq('gym_id', gymId)
+                .gt('created_at', sevenDaysAgo);
+
+            if (totalCount && totalCount > 0) {
+                const ratio = ((totalCount - (errorCount || 0)) / totalCount) * 100;
+                uptimes[gymId] = Number(ratio.toFixed(1));
+            } else {
+                uptimes[gymId] = 100;
+            }
+        }
+
+        setGymUptimes(uptimes);
+    }, [supabase]);
+
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
+            // Önceki ayın başlangıcı ve bitişi
+            const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
+            // Bu ayın başlangıcı
+            const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+            // Tüm veriler
             const { data: gymsData } = await supabase.from('gyms').select('*').order('created_at', { ascending: false });
             const { count: memberCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'member');
-            const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'completed');
+
+            // Bu ay ve geçen ayın geliri
+            const { data: thisMonthPayments } = await supabase.from('payments')
+                .select('amount')
+                .eq('status', 'completed')
+                .gte('created_at', thisMonthStart);
+
+            const { data: lastMonthPayments } = await supabase.from('payments')
+                .select('amount')
+                .eq('status', 'completed')
+                .gte('created_at', lastMonthStart)
+                .lte('created_at', lastMonthEnd);
+
+            const thisMonthRevenue = thisMonthPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+            const lastMonthRevenue = lastMonthPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+
+            // Gelir değişim yüzdesi hesaplama
+            let revenueChange = 0;
+            if (lastMonthRevenue > 0) {
+                revenueChange = Number((((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(1));
+            } else if (thisMonthRevenue > 0) {
+                revenueChange = 100; // Geçen ay 0, bu ay gelir var
+            }
+
             const { count: checkInCount } = await supabase.from('check_ins').select('*', { count: 'exact', head: true }).gt('checked_in_at', todayStart);
             const { count: lowStockCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).lt('current_stock', 5);
             const { count: healthWarningCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).not('health_issues', 'is', null);
 
-            const totalRevenue = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+            // Son 10 günün check-in verileri
+            const last10DaysCheckIns: number[] = [];
+            for (let i = 9; i >= 0; i--) {
+                const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i).toISOString();
+                const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i + 1).toISOString();
+
+                const { count } = await supabase.from('check_ins')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('checked_in_at', dayStart)
+                    .lt('checked_in_at', dayEnd);
+
+                last10DaysCheckIns.push(count || 0);
+            }
 
             if (gymsData) {
                 const activeGyms = gymsData.filter(gym => gym.settings?.status !== 'archived');
                 setGyms(activeGyms);
+
+                // Salon uptime'larını hesapla
+                calculateGymUptimes(activeGyms.map(g => g.id));
+
                 setStats({
                     totalGyms: activeGyms.length,
                     activeMembers: memberCount || 0,
-                    totalRevenue: totalRevenue,
+                    totalRevenue: thisMonthRevenue,
                     trialGyms: activeGyms.filter(g => !g.settings?.is_activated).length,
                     todayCheckIns: checkInCount || 0,
                     lowStockAlerts: lowStockCount || 0,
-                    healthWarnings: healthWarningCount || 0
+                    healthWarnings: healthWarningCount || 0,
+                    revenueChange: revenueChange,
+                    last10DaysCheckIns: last10DaysCheckIns,
+                    todayCheckInGoal: 100 // Bu değer ayarlanabilir veya DB'den çekilebilir
                 });
             }
         } catch (error) {
@@ -185,13 +278,13 @@ export default function SuperAdminPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, [supabase, calculateGymUptimes]);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         const latencyTimer = setInterval(measureLatency, 5000);
         const metricsTimer = setInterval(updateSysMetrics, 3000);
-        
+
         loadData();
         loadLastLogin();
         measureLatency();
@@ -221,14 +314,12 @@ export default function SuperAdminPage() {
         if (!announcementMsg.trim()) return;
         setAnnouncementLoading(true);
         try {
-            // 1. Tüm admin kullanıcılarını bul
             const { data: admins } = await supabase
                 .from('users')
                 .select('id')
                 .eq('role', 'admin');
 
             if (admins && admins.length > 0) {
-                // 2. Her admin için bir sistem bildirimi oluştur
                 const notifications = admins.map(admin => ({
                     user_id: admin.id,
                     title: 'KRİTİK SİSTEM DUYURUSU',
@@ -272,6 +363,9 @@ export default function SuperAdminPage() {
         );
     }
 
+    // Progress yüzdesi hesaplama
+    const todayProgressPercent = Math.min((stats.todayCheckIns / stats.todayCheckInGoal) * 100, 100);
+
     return (
         <div className="space-y-12 pb-20 text-left">
             {/* --- HEADER HUD --- */}
@@ -293,7 +387,7 @@ export default function SuperAdminPage() {
                                 <span>Sistem Nabzı: Kararlı</span>
                             </div>
                             <div className="flex items-center gap-2 font-mono">
-                                <Clock className="w-3.5 h-3.5 text-zinc-700" /> 
+                                <Clock className="w-3.5 h-3.5 text-zinc-700" />
                                 {currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </div>
                             <div className="flex items-center gap-2 font-mono">
@@ -304,9 +398,9 @@ export default function SuperAdminPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Button 
+                    <Button
                         onClick={() => setIsAnnouncementOpen(true)}
-                        variant="secondary" 
+                        variant="secondary"
                         className="px-6 h-14 bg-orange-500/10 border-orange-500/20 text-orange-500 hover:bg-orange-500 hover:text-white rounded-xl transition-all font-black text-[10px] tracking-widest uppercase"
                     >
                         <Bell className="w-4 h-4 mr-3" /> KÜRESEL DUYURU
@@ -335,7 +429,7 @@ export default function SuperAdminPage() {
                                 </div>
                                 <div>
                                     <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Ağ İşlem Hacmi</span>
-                                    <p className="text-[9px] text-zinc-600 font-mono mt-0.5 uppercase tracking-widest">Küresel Toplam</p>
+                                    <p className="text-[9px] text-zinc-600 font-mono mt-0.5 uppercase tracking-widest">Bu Ay Toplam</p>
                                 </div>
                             </div>
                         </div>
@@ -343,11 +437,13 @@ export default function SuperAdminPage() {
                             {stats.totalRevenue.toLocaleString()} <span className="text-2xl text-zinc-800 font-mono">TL</span>
                         </h2>
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
-                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">+12.4%</span>
+                            <div className={`flex items-center gap-1.5 px-3 py-1 ${stats.revenueChange >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'} border rounded-lg`}>
+                                <ArrowUpRight className={`w-3.5 h-3.5 ${stats.revenueChange >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-90'}`} />
+                                <span className={`text-[10px] font-black ${stats.revenueChange >= 0 ? 'text-emerald-500' : 'text-red-500'} uppercase tracking-widest`}>
+                                    {stats.revenueChange >= 0 ? '+' : ''}{stats.revenueChange}%
+                                </span>
                             </div>
-                            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Önceki Döneme Göre</span>
+                            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Geçen Aya Göre</span>
                         </div>
                     </div>
                 </Card>
@@ -400,9 +496,17 @@ export default function SuperAdminPage() {
                             <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Tüm salonlardaki aktif sporcular</p>
                         </div>
                         <div className="flex items-end gap-1.5 h-20 mb-1">
-                            {[30, 60, 40, 80, 50, 70, 100, 60, 90, 40].map((h, i) => (
-                                <motion.div key={i} animate={{ height: `${h}%` }} className="w-1.5 bg-blue-500/20 rounded-full group-hover:bg-blue-500 transition-all duration-500" />
-                            ))}
+                            {stats.last10DaysCheckIns.map((count, i) => {
+                                const maxCount = Math.max(...stats.last10DaysCheckIns, 1);
+                                const height = (count / maxCount) * 100;
+                                return (
+                                    <motion.div
+                                        key={i}
+                                        animate={{ height: `${height}%` }}
+                                        className="w-1.5 bg-blue-500/20 rounded-full group-hover:bg-blue-500 transition-all duration-500"
+                                    />
+                                );
+                            })}
                         </div>
                     </div>
                 </Card>
@@ -452,8 +556,12 @@ export default function SuperAdminPage() {
                     <p className="text-4xl font-black text-white tabular-nums">{stats.todayCheckIns}</p>
                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Bugünkü Toplam Giriş</p>
                     <div className="mt-6 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div animate={{ width: '65%' }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
+                        <motion.div
+                            animate={{ width: `${todayProgressPercent}%` }}
+                            className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]"
+                        />
                     </div>
+                    <p className="text-[9px] text-zinc-600 font-mono mt-2">Hedef: {stats.todayCheckInGoal}</p>
                 </Card>
 
                 <Card className="p-8 bg-[#050505] border-white/[0.04] relative overflow-hidden group">
@@ -530,7 +638,7 @@ export default function SuperAdminPage() {
                             </div>
                         )}
                         <div className="absolute bottom-6 right-8">
-                             <div className="w-2 h-4 bg-orange-500 animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
+                            <div className="w-2 h-4 bg-orange-500 animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
                         </div>
                     </div>
                 </Card>
@@ -557,63 +665,72 @@ export default function SuperAdminPage() {
                 </div>
 
                 <div className="grid gap-4">
-                    {filteredGyms.map((gym) => (
-                        <div 
-                            key={gym.id} 
-                            onClick={() => router.push(`/gyms/${gym.id}`)}
-                            className="bg-[#050505] border border-white/[0.04] rounded-[1.5rem] hover:border-orange-500/30 hover:bg-zinc-900/10 transition-all group cursor-pointer overflow-hidden relative"
-                        >
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center p-7">
-                                <div className="lg:col-span-4 flex items-center gap-6">
-                                    <div className="w-14 h-14 bg-zinc-950 border border-white/5 rounded-xl flex items-center justify-center text-zinc-700 group-hover:text-orange-500 group-hover:border-orange-500/20 transition-all shadow-inner relative">
-                                        <Wifi className="w-6 h-6 relative z-10" />
-                                        <div className="absolute inset-0 bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-base font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase tracking-tight">{gym.name}</h3>
-                                            {!gym.settings?.is_activated && (
-                                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest bg-white/[0.02] px-2 py-0.5 rounded border border-white/[0.05]">
-                                                NODE::{gym.id.slice(0, 8)}
-                                            </span>
-                                            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">v2.4.0</span>
-                                        </div>
-                                    </div>
-                                </div>
+                    {filteredGyms.map((gym) => {
+                        const gymUptime = gymUptimes[gym.id] || 0;
+                        const uptimeBars = Math.round(gymUptime / 20); // 0-5 bar
 
-                                <div className="lg:col-span-5 grid grid-cols-2 gap-12 border-x border-white/[0.04] px-12">
-                                    <div className="space-y-1.5">
-                                        <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em]">Kararlılık</p>
-                                        <div className="flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest">
-                                            <div className="flex gap-0.5">
-                                                {[1,2,3,4].map(i => <div key={i} className="w-1 h-3 bg-emerald-500/40 rounded-sm" />)}
-                                                <div className="w-1 h-3 bg-zinc-800 rounded-sm" />
+                        return (
+                            <div
+                                key={gym.id}
+                                onClick={() => router.push(`/gyms/${gym.id}`)}
+                                className="bg-[#050505] border border-white/[0.04] rounded-[1.5rem] hover:border-orange-500/30 hover:bg-zinc-900/10 transition-all group cursor-pointer overflow-hidden relative"
+                            >
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center p-7">
+                                    <div className="lg:col-span-4 flex items-center gap-6">
+                                        <div className="w-14 h-14 bg-zinc-950 border border-white/5 rounded-xl flex items-center justify-center text-zinc-700 group-hover:text-orange-500 group-hover:border-orange-500/20 transition-all shadow-inner relative">
+                                            <Wifi className="w-6 h-6 relative z-10" />
+                                            <div className="absolute inset-0 bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-base font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase tracking-tight">{gym.name}</h3>
+                                                {!gym.settings?.is_activated && (
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                                )}
                                             </div>
-                                            98.2%
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest bg-white/[0.02] px-2 py-0.5 rounded border border-white/[0.05]">
+                                                    SALON::{gym.id.slice(0, 8)}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">{vercelInfo.version}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em]">Son Dağıtım</p>
-                                        <p className="text-[10px] font-mono text-zinc-400 uppercase">{new Date(gym.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                                    </div>
-                                </div>
 
-                                <div className="lg:col-span-3 flex items-center justify-end gap-8">
-                                    <div className="text-right">
-                                        <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em] mb-1">I/O Trafik</p>
-                                        <p className="text-[11px] font-black text-white tabular-nums font-mono uppercase bg-white/5 px-2 py-0.5 rounded">Nominal</p>
+                                    <div className="lg:col-span-5 grid grid-cols-2 gap-12 border-x border-white/[0.04] px-12">
+                                        <div className="space-y-1.5">
+                                            <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em]">Kararlılık</p>
+                                            <div className="flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest">
+                                                <div className="flex gap-0.5">
+                                                    {[1, 2, 3, 4, 5].map(i => (
+                                                        <div
+                                                            key={i}
+                                                            className={`w-1 h-3 rounded-sm ${i <= uptimeBars ? 'bg-emerald-500/80' : 'bg-zinc-800'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                {gymUptime.toFixed(1)}%
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em]">Son Dağıtım</p>
+                                            <p className="text-[10px] font-mono text-zinc-400 uppercase">{new Date(gym.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                                        </div>
                                     </div>
-                                    <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-zinc-700 group-hover:text-white group-hover:bg-orange-500 transition-all shadow-lg group-hover:shadow-orange-500/20">
-                                        <ArrowUpRight className="w-5 h-5" />
+
+                                    <div className="lg:col-span-3 flex items-center justify-end gap-8">
+                                        <div className="text-right">
+                                            <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em] mb-1">Bellek Kullanımı</p>
+                                            <p className="text-[11px] font-black text-white tabular-nums font-mono uppercase bg-white/5 px-2 py-0.5 rounded">{sysMetrics.ram}%</p>
+                                        </div>
+                                        <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-zinc-700 group-hover:text-white group-hover:bg-orange-500 transition-all shadow-lg group-hover:shadow-orange-500/20">
+                                            <ArrowUpRight className="w-5 h-5" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -624,7 +741,7 @@ export default function SuperAdminPage() {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAnnouncementOpen(false)} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
                         <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="w-full max-w-xl bg-[#050505] border border-white/10 rounded-[2.5rem] p-10 relative z-10 shadow-2xl overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
-                            
+
                             <div className="flex items-center justify-between mb-8">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500 border border-orange-500/20 shadow-lg">
@@ -641,7 +758,7 @@ export default function SuperAdminPage() {
                             <form onSubmit={handleSendAnnouncement} className="space-y-6">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Mesaj İçeriği</label>
-                                    <textarea 
+                                    <textarea
                                         autoFocus
                                         value={announcementMsg}
                                         onChange={(e) => setAnnouncementMsg(e.target.value)}
@@ -656,10 +773,10 @@ export default function SuperAdminPage() {
 
                                 <div className="flex gap-4">
                                     <Button type="button" onClick={() => setIsAnnouncementOpen(false)} className="flex-1 h-14 bg-white/5 border border-white/5 rounded-2xl font-black text-[10px] tracking-widest uppercase">İPTAL</Button>
-                                    <Button 
-                                        type="submit" 
-                                        isLoading={announcementLoading} 
-                                        variant="primary" 
+                                    <Button
+                                        type="submit"
+                                        isLoading={announcementLoading}
+                                        variant="primary"
                                         className="flex-[2] h-14 rounded-2xl font-black text-[10px] tracking-widest uppercase shadow-2xl shadow-orange-500/20"
                                     >
                                         DUYURUYU YAYINLA
