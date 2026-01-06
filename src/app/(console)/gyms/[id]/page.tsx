@@ -32,7 +32,8 @@ import {
     Zap,
     CircleDot,
     X,
-    Package
+    Package,
+    Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -159,6 +160,8 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
         // Settings (JSONB)
 
+        notification_email: '',
+
         is_ai_enabled: true,
 
         is_inventory_enabled: true,
@@ -173,11 +176,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
     });
 
-
-
     const supabase = createClient();
-
-
 
     const loadGymData = useCallback(async () => {
 
@@ -207,6 +206,8 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
                     status: s.status || 'active',
 
+                    notification_email: s.notification_email || '',
+
                     is_ai_enabled: s.is_ai_enabled ?? true,
 
                     is_inventory_enabled: s.is_inventory_enabled ?? true,
@@ -223,25 +224,17 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
             }
 
-
-
             const { data: logData } = await supabase.from('system_logs').select('*').eq('gym_id', gymId).order('created_at', { ascending: false }).limit(15);
 
             if (logData) setLogs(logData);
-
-
 
             const { count: members } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('role', 'member');
 
             const { count: trainers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('role', 'trainer');
 
-
-
             const { data: payments } = await supabase.from('payments').select('amount, created_at, status').eq('gym_id', gymId).eq('status', 'completed').order('created_at', { ascending: false });
 
             const totalRev = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-
-
 
             setStats({
 
@@ -258,8 +251,6 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
         } catch (error) { console.error(error); } finally { setLoading(false); }
 
     }, [gymId, supabase]);
-
-
 
     const handleSaveConfig = async (e: React.FormEvent) => {
 
@@ -287,6 +278,8 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
                         ...(gym.settings || {}),
 
+                        notification_email: configForm.notification_email,
+
                         status: configForm.status,
 
                         is_ai_enabled: configForm.is_ai_enabled,
@@ -309,19 +302,11 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
                 .eq('id', gymId);
 
-
-
             if (error) throw error;
-
-
 
             toast.success('Salon yapılandırması başarıyla güncellendi.');
 
-
-
             setShowConfigModal(false);
-
-
 
             loadGymData();
 
@@ -336,8 +321,6 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
         }
 
     };
-
-
 
     useEffect(() => { loadGymData(); }, [loadGymData]);
 
@@ -422,6 +405,35 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                                 <p className="text-[9px] text-zinc-500 font-mono uppercase mt-1.5">{module.desc}</p>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Section 1.5: Notification Channel */}
+                                <div className="space-y-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-[1px] flex-1 bg-white/[0.04]" />
+                                        <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Bildirim Kanalı</h3>
+                                        <div className="h-[1px] flex-1 bg-white/[0.04]" />
+                                    </div>
+                                    <div className="bg-white/[0.02] border border-white/10 rounded-[2rem] p-8">
+                                        <div className="flex flex-col md:flex-row gap-8 items-center">
+                                            <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 text-blue-500">
+                                                <Mail className="w-8 h-8" />
+                                            </div>
+                                            <div className="flex-1 space-y-2 w-full">
+                                                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Yönetici Bildirim E-postası</label>
+                                                <input
+                                                    type="email"
+                                                    value={configForm.notification_email}
+                                                    onChange={e => setConfigForm({ ...configForm, notification_email: e.target.value })}
+                                                    placeholder="ornek@salon.com"
+                                                    className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl px-6 text-base text-white focus:outline-none focus:border-blue-500/50 transition-all focus:bg-white/[0.04] placeholder:text-zinc-700 font-mono"
+                                                />
+                                                <p className="text-[10px] text-zinc-500">
+                                                    <span className="text-blue-500">*</span> Bu adres sadece developer panelden yapılandırılabilir. Ödeme bildirimleri buraya gönderilir.
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 

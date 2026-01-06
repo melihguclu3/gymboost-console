@@ -34,42 +34,16 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     const [isLoading, setIsLoading] = useState(true);
     const [adminName, setAdminName] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    // Splash ve içerik gösterimi için state'ler
-    const [showSplash, setShowSplash] = useState(false);
     const [showContent, setShowContent] = useState(false);
-    const [contentAnimated, setContentAnimated] = useState(false);
 
-    // Splash kontrolü - Mount anında bir kez çalışır
+    // Animasyon süresiyle senkronize et (SystemHeartbeatSplash 4.5s sürüyor)
     useEffect(() => {
         const hasSeenSplash = sessionStorage.getItem('has_seen_console_splash');
-
         if (hasSeenSplash) {
-            // Kullanıcı splash'ı daha önce gördü, içeriği anında göster (animasyonsuz)
-            setShowSplash(false);
             setShowContent(true);
-            setContentAnimated(true); // Animasyon atlanacak
         } else {
-            // İlk ziyaret, splash göster
-            setShowSplash(true);
-            setShowContent(false);
-            setContentAnimated(false);
-
-            // 9.5sn sonra içeriği fade-in ile göster
-            const contentTimer = setTimeout(() => {
-                setShowContent(true);
-            }, 9500);
-
-            // 10sn sonra splash'ı kapat ve session'a kaydet
-            const splashTimer = setTimeout(() => {
-                setShowSplash(false);
-                sessionStorage.setItem('has_seen_console_splash', 'true');
-            }, 10000);
-
-            return () => {
-                clearTimeout(contentTimer);
-                clearTimeout(splashTimer);
-            };
+            const timer = setTimeout(() => setShowContent(true), 4200);
+            return () => clearTimeout(timer);
         }
     }, []);
 
@@ -126,9 +100,8 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
         );
     }
 
-    // Ana içerik bileşeni
-    const MainContent = () => (
-        <div className="flex h-screen">
+    return (
+        <div className="min-h-screen bg-black flex text-zinc-100 font-sans selection:bg-orange-500/20 overflow-hidden">
             {/* --- SIDEBAR --- */}
             <aside className="w-72 border-r border-white/[0.04] flex flex-col shrink-0 bg-[#020202] hidden lg:flex sticky top-0 h-screen">
                 <div className="p-10 pb-12">
@@ -152,8 +125,8 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                                 href={item.href}
                                 className={cn(
                                     "flex items-center gap-4 px-5 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden",
-                                    isActive
-                                        ? "bg-orange-500/[0.03] text-white"
+                                    isActive 
+                                        ? "bg-orange-500/[0.03] text-white" 
                                         : "text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.02]"
                                 )}
                             >
@@ -200,11 +173,11 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             {/* --- MAIN --- */}
             <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto subtle-grid relative">
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none" />
-
+                
                 <header className="h-20 border-b border-white/[0.04] flex items-center justify-between px-6 lg:px-14 bg-black/60 backdrop-blur-xl sticky top-0 z-40">
                     <div className="flex items-center gap-4 lg:gap-8">
                         {/* Mobile Menu Trigger */}
-                        <button
+                        <button 
                             onClick={() => setIsMobileMenuOpen(true)}
                             className="lg:hidden p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
                         >
@@ -225,7 +198,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                     </div>
 
                     <div className="flex items-center gap-6">
-                        <div
+                        <div 
                             onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
                             className="relative group hidden md:block cursor-pointer"
                         >
@@ -235,7 +208,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                                 <div className="px-1.5 py-0.5 bg-zinc-900 border border-white/10 rounded text-[9px] font-mono text-zinc-700">⌘K</div>
                             </div>
                         </div>
-
+                        
                         <div className="h-6 w-[1px] bg-white/[0.04] mx-2 hidden lg:block" />
 
                         <button className="relative p-3 text-zinc-600 hover:text-white rounded-xl hover:bg-white/[0.02] transition-all border border-transparent hover:border-white/[0.05] group">
@@ -249,45 +222,21 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                     {children}
                 </div>
                 <CommandPalette />
+                <SystemHeartbeatSplash />
             </main>
-        </div>
-    );
-
-    return (
-        <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-orange-500/20 overflow-hidden relative">
-
-            {/* Splash Screen - Sadece ilk ziyarette gösterilir */}
-            {showSplash && <SystemHeartbeatSplash />}
-
-            {/* Ana içerik */}
-            {showContent && (
-                contentAnimated ? (
-                    // Daha önce görüldüyse animasyonsuz göster
-                    <MainContent />
-                ) : (
-                    // İlk kez görülüyorsa fade-in ile göster
-                    <motion.div
-                        initial={{ opacity: 0, filter: 'blur(10px)', scale: 0.98 }}
-                        animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
-                        transition={{ duration: 1.5, ease: 'circOut' }}
-                    >
-                        <MainContent />
-                    </motion.div>
-                )
-            )}
 
             {/* --- MOBILE SIDEBAR OVERLAY --- */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <>
-                        <motion.div
+                        <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] lg:hidden"
                         />
-                        <motion.div
+                        <motion.div 
                             initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
