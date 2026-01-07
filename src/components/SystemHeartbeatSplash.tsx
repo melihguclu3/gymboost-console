@@ -248,7 +248,7 @@ export function SystemHeartbeatSplash() {
                                     <motion.div
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
-                                        type="spring"
+                                        transition={{ type: "spring", damping: 15, stiffness: 200 }}
                                         className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/50 flex items-center justify-center"
                                     >
                                         <CheckCircle2 className="w-8 h-8 text-emerald-500" />
@@ -278,7 +278,7 @@ export function SystemHeartbeatSplash() {
                                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-300 drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]">MELİH</span>
                                     </h2>
                                     <motion.div
-                                        initial={{ w: 0 }}
+                                        initial={{ width: 0 }}
                                         animate={{ width: "100%" }}
                                         transition={{ duration: 1, delay: 0.5 }}
                                         className="h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent w-full mt-4"
