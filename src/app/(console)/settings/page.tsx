@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Button, Input } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -11,7 +11,8 @@ import {
     Globe,
     Shield,
     LogOut,
-    Save
+    Save,
+    Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
