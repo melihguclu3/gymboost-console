@@ -8,24 +8,19 @@ import {
     Users,
     Building2,
     TrendingUp,
-    Zap,
     ArrowUpRight,
     Search,
-    ChevronRight,
     Activity,
     Clock,
     Database,
     Globe,
     Server,
-    ShieldCheck,
-    Terminal,
-    Cpu,
-    Wifi,
     Package,
     HeartPulse,
     AlertCircle,
     Bell,
-    X
+    X,
+    ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,12 +56,11 @@ export default function SuperAdminPage() {
         todayCheckIns: 0,
         lowStockAlerts: 0,
         healthWarnings: 0,
-        revenueChange: 0, // Yeni: gelir değişim yüzdesi
-        last10DaysCheckIns: [] as number[], // Yeni: son 10 günün check-in verileri
-        todayCheckInGoal: 100 // Hedef check-in sayısı
+        revenueChange: 0,
+        last10DaysCheckIns: [] as number[],
+        todayCheckInGoal: 100
     });
 
-    // Her salon için uptime metriği
     const [gymUptimes, setGymUptimes] = useState<Record<string, number>>({});
 
     const supabase = createClient();
@@ -86,13 +80,12 @@ export default function SuperAdminPage() {
 
     const loadVercelInfo = useCallback(() => {
         const isDev = process.env.NODE_ENV === 'development';
-        // Gerçek Vercel SHA veya package version
         const version = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
-            ? `SÜRÜM::${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7).toUpperCase()}`
+            ? `v${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}`
             : 'v2.4.0';
 
         setVercelInfo({
-            region: isDev ? 'Yerel Sunucu' : (process.env.NEXT_PUBLIC_VERCEL_REGION || 'fra1 (Frankfurt)'),
+            region: isDev ? 'Local' : (process.env.NEXT_PUBLIC_VERCEL_REGION || 'fra1'),
             version: version,
             env: process.env.NODE_ENV || 'production'
         });
@@ -165,7 +158,6 @@ export default function SuperAdminPage() {
         }
     }, [supabase]);
 
-    // Her salon için uptime hesaplama
     const calculateGymUptimes = useCallback(async (gymIds: string[]) => {
         const uptimes: Record<string, number> = {};
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -201,18 +193,13 @@ export default function SuperAdminPage() {
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
-            // Önceki ayın başlangıcı ve bitişi
             const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
             const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
-
-            // Bu ayın başlangıcı
             const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-            // Tüm veriler
             const { data: gymsData } = await supabase.from('gyms').select('*').order('created_at', { ascending: false });
             const { count: memberCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'member');
 
-            // Bu ay ve geçen ayın geliri
             const { data: thisMonthPayments } = await supabase.from('payments')
                 .select('amount')
                 .eq('status', 'completed')
@@ -227,19 +214,17 @@ export default function SuperAdminPage() {
             const thisMonthRevenue = thisMonthPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
             const lastMonthRevenue = lastMonthPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
-            // Gelir değişim yüzdesi hesaplama
             let revenueChange = 0;
             if (lastMonthRevenue > 0) {
                 revenueChange = Number((((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(1));
             } else if (thisMonthRevenue > 0) {
-                revenueChange = 100; // Geçen ay 0, bu ay gelir var
+                revenueChange = 100;
             }
 
             const { count: checkInCount } = await supabase.from('check_ins').select('*', { count: 'exact', head: true }).gt('checked_in_at', todayStart);
             const { count: lowStockCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).lt('current_stock', 5);
             const { count: healthWarningCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).not('health_issues', 'is', null);
 
-            // Son 10 günün check-in verileri
             const last10DaysCheckIns: number[] = [];
             for (let i = 9; i >= 0; i--) {
                 const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i).toISOString();
@@ -257,7 +242,6 @@ export default function SuperAdminPage() {
                 const activeGyms = gymsData.filter(gym => gym.settings?.status !== 'archived');
                 setGyms(activeGyms);
 
-                // Salon uptime'larını hesapla
                 calculateGymUptimes(activeGyms.map(g => g.id));
 
                 setStats({
@@ -270,7 +254,7 @@ export default function SuperAdminPage() {
                     healthWarnings: healthWarningCount || 0,
                     revenueChange: revenueChange,
                     last10DaysCheckIns: last10DaysCheckIns,
-                    todayCheckInGoal: 100 // Bu değer ayarlanabilir veya DB'den çekilebilir
+                    todayCheckInGoal: 100
                 });
             }
         } catch (error) {
@@ -322,7 +306,7 @@ export default function SuperAdminPage() {
             if (admins && admins.length > 0) {
                 const notifications = admins.map(admin => ({
                     user_id: admin.id,
-                    title: 'KRİTİK SİSTEM DUYURUSU',
+                    title: 'Sistem Duyurusu',
                     body: announcementMsg,
                     type: 'system',
                     read: false
@@ -335,15 +319,15 @@ export default function SuperAdminPage() {
             await supabase.from('system_logs').insert({
                 event_type: 'success',
                 entity_type: 'system_settings',
-                message: `Küresel duyuru yayınlandı (Admins: ${admins?.length || 0}): ${announcementMsg.slice(0, 30)}...`,
+                message: `Küresel duyuru yayınlandı (${admins?.length || 0} admin): ${announcementMsg.slice(0, 30)}...`,
                 actor_role: 'super_admin'
             });
 
-            toast.success('Küresel duyuru başarıyla yayınlandı.');
+            toast.success('Duyuru başarıyla gönderildi');
             setAnnouncementMsg('');
             setIsAnnouncementOpen(false);
         } catch (error: any) {
-            toast.error('Duyuru hatası: ' + error.message);
+            toast.error('Hata: ' + error.message);
         } finally {
             setAnnouncementLoading(false);
         }
@@ -357,429 +341,406 @@ export default function SuperAdminPage() {
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <div className="w-10 h-10 border-[3px] border-zinc-800 border-t-orange-500 rounded-full animate-spin shadow-lg shadow-orange-500/10" />
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Veri Akışı Senkronize Ediliyor...</p>
+                <div className="w-8 h-8 border-2 border-zinc-300 border-t-blue-600 rounded-full animate-spin" />
+                <p className="text-sm text-zinc-500">Yükleniyor...</p>
             </div>
         );
     }
 
-    // Progress yüzdesi hesaplama
     const todayProgressPercent = Math.min((stats.todayCheckIns / stats.todayCheckInGoal) * 100, 100);
 
     return (
-        <div className="space-y-12 pb-20 text-left">
-            {/* --- HEADER HUD --- */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10 border-b border-white/[0.04] pb-12">
-                <div className="flex items-start gap-8">
-                    <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-[1.5rem] shadow-lg shadow-orange-500/5 relative overflow-hidden group">
-                        <Activity className="w-10 h-10 text-orange-500 relative z-10 group-hover:scale-110 transition-transform" />
-                        <div className="absolute inset-0 bg-orange-500/5 animate-pulse" />
-                    </div>
+        <div className="space-y-6 pb-20">
+            {/* Header */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <div className="flex items-center gap-4 mb-3">
-                            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
-                                KÜRESEL <span className="text-orange-500">SALON</span> OPERASYONLARI
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-6 text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">
-                            <div className="flex items-center gap-2 px-2 py-0.5 bg-emerald-500/5 border border-emerald-500/20 rounded text-emerald-500">
-                                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                <span>Sistem Nabzı: Kararlı</span>
-                            </div>
-                            <div className="flex items-center gap-2 font-mono">
-                                <Clock className="w-3.5 h-3.5 text-zinc-700" />
-                                {currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </div>
-                            <div className="flex items-center gap-2 font-mono">
-                                <Globe className="w-3.5 h-3.5 text-zinc-700" /> {coords.lat}° N | {coords.lon}° E
-                            </div>
-                        </div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
+                            Kontrol Paneli
+                        </h1>
+                        <p className="text-sm text-zinc-500 mt-1">
+                            Tüm salonların merkezi yönetimi
+                        </p>
                     </div>
-                </div>
-
-                <div className="flex items-center gap-3">
                     <Button
                         onClick={() => setIsAnnouncementOpen(true)}
-                        variant="secondary"
-                        className="px-6 h-14 bg-orange-500/10 border-orange-500/20 text-orange-500 hover:bg-orange-500 hover:text-white rounded-xl transition-all font-black text-[10px] tracking-widest uppercase"
+                        variant="primary"
+                        className="w-full sm:w-auto"
                     >
-                        <Bell className="w-4 h-4 mr-3" /> KÜRESEL DUYURU
+                        <Bell className="w-4 h-4 mr-2" />
+                        Duyuru Gönder
                     </Button>
-                    <div className="px-6 py-4 bg-zinc-950/40 border border-white/[0.04] rounded-2xl text-right group hover:border-orange-500/30 transition-all shadow-2xl relative overflow-hidden">
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1 group-hover:text-orange-500 transition-colors">Gecikme</p>
-                        <p className="text-2xl font-black text-white tabular-nums font-mono">{currentLatency}<span className="text-[10px] text-zinc-800 ml-1 font-mono uppercase">MS</span></p>
+                </div>
+
+                {/* System Info Bar */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span>Sistem Aktif</span>
                     </div>
-                    <div className="px-6 py-4 bg-zinc-950/40 border border-white/[0.04] rounded-2xl text-right group hover:border-blue-500/30 transition-all shadow-2xl relative overflow-hidden">
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1 group-hover:text-blue-500 transition-colors">Çalışma Süresi</p>
-                        <p className="text-2xl font-black text-white tabular-nums font-mono">{uptime}<span className="text-[10px] text-zinc-800 ml-1 font-mono uppercase">%</span></p>
+                    <span className="text-zinc-300">•</span>
+                    <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{currentTime.toLocaleTimeString('tr-TR')}</span>
+                    </div>
+                    <span className="text-zinc-300">•</span>
+                    <div className="flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>{coords.lat}°N, {coords.lon}°E</span>
+                    </div>
+                    <span className="text-zinc-300 hidden sm:inline">•</span>
+                    <div className="hidden sm:flex items-center gap-1.5">
+                        <span>Gecikme: {currentLatency}ms</span>
+                    </div>
+                    <span className="text-zinc-300 hidden sm:inline">•</span>
+                    <div className="hidden sm:flex items-center gap-1.5">
+                        <span>Uptime: {uptime}%</span>
                     </div>
                 </div>
             </div>
 
-            {/* --- BENTO METRICS GRID --- */}
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                <Card className="md:col-span-2 lg:col-span-3 p-10 bg-zinc-950/20 border-white/[0.04] relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-1/2 h-full bg-emerald-500/5 blur-[100px] pointer-events-none group-hover:bg-emerald-500/10 transition-colors duration-1000" />
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-                    <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-12">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3.5 bg-emerald-500/10 rounded-2xl text-emerald-500 border border-emerald-500/20">
-                                    <TrendingUp className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Ağ İşlem Hacmi</span>
-                                    <p className="text-[9px] text-zinc-600 font-mono mt-0.5 uppercase tracking-widest">Bu Ay Toplam</p>
-                                </div>
-                            </div>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Revenue */}
+                <Card className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-500" />
                         </div>
-                        <h2 className="text-7xl font-black text-white tracking-tighter tabular-nums mb-4">
-                            {stats.totalRevenue.toLocaleString()} <span className="text-2xl text-zinc-800 font-mono">TL</span>
-                        </h2>
-                        <div className="flex items-center gap-3">
-                            <div className={`flex items-center gap-1.5 px-3 py-1 ${stats.revenueChange >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'} border rounded-lg`}>
-                                <ArrowUpRight className={`w-3.5 h-3.5 ${stats.revenueChange >= 0 ? 'text-emerald-500' : 'text-red-500 rotate-90'}`} />
-                                <span className={`text-[10px] font-black ${stats.revenueChange >= 0 ? 'text-emerald-500' : 'text-red-500'} uppercase tracking-widest`}>
-                                    {stats.revenueChange >= 0 ? '+' : ''}{stats.revenueChange}%
-                                </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Geçen Aya Göre</span>
+                        <div className={cn(
+                            "text-xs font-medium px-2 py-1 rounded",
+                            stats.revenueChange >= 0
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                                : "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                        )}>
+                            {stats.revenueChange >= 0 ? '+' : ''}{stats.revenueChange}%
                         </div>
                     </div>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                        {stats.totalRevenue.toLocaleString()} ₺
+                    </p>
+                    <p className="text-sm text-zinc-500 mt-1">Bu Ay Gelir</p>
                 </Card>
 
-                <Card className="md:col-span-2 lg:col-span-3 p-10 bg-zinc-950/20 border-white/[0.04] relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/20 to-transparent" />
-                    <div className="flex items-center justify-between mb-12 relative z-10">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3.5 bg-orange-500/10 rounded-2xl text-orange-500 border border-orange-500/20">
-                                <Building2 className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Sistem Salonları</span>
-                                <p className="text-[9px] text-zinc-600 font-mono mt-0.5 uppercase tracking-widest">Aktif Örnekler</p>
-                            </div>
+                {/* Gyms */}
+                <Card className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                            <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-500" />
                         </div>
-                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-mono text-zinc-400">SENK: TAMAM</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-10 relative z-10">
-                        <div className="space-y-1">
-                            <p className="text-6xl font-black text-white tracking-tighter tabular-nums">{stats.totalGyms}</p>
-                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Yayındaki</p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-6xl font-black text-orange-500 tracking-tighter tabular-nums">{stats.trialGyms}</p>
-                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Beklemede</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="md:col-span-4 lg:col-span-4 p-10 bg-zinc-950/20 border-white/[0.04] group relative overflow-hidden">
-                    <div className="absolute inset-0 bg-blue-500/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                    <div className="flex items-center justify-between mb-10 relative z-10">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3.5 bg-blue-500/10 rounded-2xl text-blue-500 border border-blue-500/20">
-                                <Users className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Üye Portföyü</span>
-                                <p className="text-[9px] text-zinc-600 font-mono mt-0.5 uppercase tracking-widest">Toplam Kayıtlı Üyeler</p>
-                            </div>
-                        </div>
-                        <button onClick={() => router.push('/users')} className="p-2 text-zinc-500 hover:text-white transition-colors cursor-pointer">
-                            <ArrowUpRight className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <div className="flex items-end justify-between relative z-10">
-                        <div className="space-y-1">
-                            <p className="text-6xl font-black text-white tracking-tighter tabular-nums">{stats.activeMembers.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Tüm salonlardaki aktif sporcular</p>
-                        </div>
-                        <div className="flex items-end gap-1.5 h-20 mb-1">
-                            {stats.last10DaysCheckIns.map((count, i) => {
-                                const maxCount = Math.max(...stats.last10DaysCheckIns, 1);
-                                const height = (count / maxCount) * 100;
-                                return (
-                                    <motion.div
-                                        key={i}
-                                        animate={{ height: `${height}%` }}
-                                        className="w-1.5 bg-blue-500/20 rounded-full group-hover:bg-blue-500 transition-all duration-500"
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="md:col-span-2 lg:col-span-2 p-10 bg-zinc-950/20 border-white/[0.04]">
-                    <div className="flex items-center gap-4 mb-10">
-                        <div className="p-3.5 bg-zinc-900 border border-white/5 rounded-2xl text-zinc-500">
-                            <Server className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Altyapı Kümesi</span>
-                            <p className="text-[9px] text-zinc-600 font-mono mt-0.5 uppercase tracking-widest">Vercel Dağıtım Servisi</p>
-                        </div>
-                    </div>
-                    <div className="space-y-8">
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-[10px] font-black text-zinc-500 uppercase tracking-widest font-mono">
-                                <span>DAĞITIM BÖLGESİ</span>
-                                <span className="text-orange-500">{vercelInfo.region}</span>
-                            </div>
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                <motion.div animate={{ width: '100%' }} className="h-full bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.5)] opacity-40" />
-                            </div>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-[10px] font-black text-zinc-500 uppercase tracking-widest font-mono">
-                                <span>YAZILIM SÜRÜMÜ</span>
-                                <span className="text-blue-500">{vercelInfo.version}</span>
-                            </div>
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                <motion.div animate={{ width: '100%' }} className="h-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)] opacity-40" />
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-            </div>
-
-            {/* --- SYSTEM INTELLIGENCE LAYER --- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="p-8 bg-[#050505] border-white/[0.04] relative overflow-hidden group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500">
-                            <Zap className="w-6 h-6" />
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest">CANLI TRAFİK</span>
-                    </div>
-                    <p className="text-4xl font-black text-white tabular-nums">{stats.todayCheckIns}</p>
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Bugünkü Toplam Giriş</p>
-                    <div className="mt-6 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div
-                            animate={{ width: `${todayProgressPercent}%` }}
-                            className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]"
-                        />
-                    </div>
-                    <p className="text-[9px] text-zinc-600 font-mono mt-2">Hedef: {stats.todayCheckInGoal}</p>
-                </Card>
-
-                <Card className="p-8 bg-[#050505] border-white/[0.04] relative overflow-hidden group">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500">
-                            <Package className="w-6 h-6" />
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest">STOK UYARISI</span>
-                    </div>
-                    <p className="text-4xl font-black text-white tabular-nums">{stats.lowStockAlerts}</p>
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Kritik Stok Uyarıları</p>
-                    <div className="mt-6 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                        <span className="text-[9px] font-bold text-orange-500/70 uppercase">Acil İkmal Gerekiyor</span>
-                    </div>
-                </Card>
-
-                <Card className="p-8 bg-[#050505] border-white/[0.04] relative overflow-hidden group border-red-500/10">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="p-3 bg-red-500/10 rounded-2xl text-red-500">
-                            <HeartPulse className="w-6 h-6" />
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest">RİSK ANALİZİ</span>
-                    </div>
-                    <p className="text-4xl font-black text-white tabular-nums">{stats.healthWarnings}</p>
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Kritik Sağlık Notları</p>
-                    <div className="mt-6 flex items-center gap-2">
-                        <AlertCircle className="w-3.5 h-3.5 text-red-500" />
-                        <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-tight">Yüksek Riskli Üye Tespit Edildi</span>
-                    </div>
-                </Card>
-            </div>
-
-            {/* --- LIVE SYSTEM STREAM --- */}
-            <div className="space-y-6">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20">
-                            <Terminal className="w-5 h-5 text-orange-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-black text-white uppercase tracking-tighter">Canlı Sistem Akışı</h3>
-                            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mt-1">Küresel Telemetri :: Akış Aktif</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="px-3 py-1.5 bg-zinc-900 border border-white/5 rounded-lg flex items-center gap-3">
-                            <div className="flex gap-1">
-                                <div className="w-1 h-1 rounded-full bg-orange-500 animate-pulse" />
-                                <div className="w-1 h-1 rounded-full bg-orange-500 animate-pulse delay-75" />
-                                <div className="w-1 h-1 rounded-full bg-orange-500 animate-pulse delay-150" />
-                            </div>
-                            <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">GELEN VERİ</span>
-                        </div>
-                    </div>
-                </div>
-
-                <Card className="bg-[#020202] border-white/[0.04] rounded-[1.5rem] overflow-hidden shadow-2xl">
-                    <div className="p-6 font-mono text-[11px] space-y-2.5 min-h-[180px] relative">
-                        {realtimeLogs.length > 0 ? realtimeLogs.map((log, i) => (
-                            <div key={i} className="flex items-center gap-4 text-zinc-500 animate-in fade-in slide-in-from-left-2 duration-500">
-                                <span className="text-zinc-800 shrink-0">{new Date(log.created_at).toLocaleTimeString('tr-TR', { hour12: false })}</span>
-                                <span className={cn(
-                                    "font-bold shrink-0 w-16",
-                                    log.event_type?.includes('error') ? 'text-red-500' : 'text-emerald-500'
-                                )}>[{log.event_type?.toUpperCase() || 'INFO'}]</span>
-                                <span className="text-zinc-400 truncate">{log.message}</span>
-                            </div>
-                        )) : (
-                            <div className="flex items-center gap-4 text-zinc-500 italic">
-                                <span className="text-zinc-800">--:--:--</span>
-                                <span className="text-zinc-600">--</span>
-                                <span className="text-zinc-500">Global telemetri akışı bekleniyor...</span>
+                        {stats.trialGyms > 0 && (
+                            <div className="text-xs font-medium px-2 py-1 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400">
+                                {stats.trialGyms} deneme
                             </div>
                         )}
-                        <div className="absolute bottom-6 right-8">
-                            <div className="w-2 h-4 bg-orange-500 animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
+                    </div>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                        {stats.totalGyms}
+                    </p>
+                    <p className="text-sm text-zinc-500 mt-1">Aktif Salon</p>
+                </Card>
+
+                {/* Members */}
+                <Card className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                            <Users className="w-5 h-5 text-purple-600 dark:text-purple-500" />
                         </div>
+                    </div>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                        {stats.activeMembers.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-zinc-500 mt-1">Toplam Üye</p>
+                    {/* Mini Chart */}
+                    <div className="flex items-end gap-1 h-8 mt-3">
+                        {stats.last10DaysCheckIns.map((count, i) => {
+                            const maxCount = Math.max(...stats.last10DaysCheckIns, 1);
+                            const height = (count / maxCount) * 100;
+                            return (
+                                <div
+                                    key={i}
+                                    style={{ height: `${height}%` }}
+                                    className="flex-1 bg-purple-200 dark:bg-purple-900/40 rounded-sm min-h-[2px]"
+                                />
+                            );
+                        })}
+                    </div>
+                </Card>
+
+                {/* Check-ins */}
+                <Card className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
+                            <Activity className="w-5 h-5 text-cyan-600 dark:text-cyan-500" />
+                        </div>
+                    </div>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                        {stats.todayCheckIns}
+                    </p>
+                    <p className="text-sm text-zinc-500 mt-1">Bugünkü Giriş</p>
+                    {/* Progress Bar */}
+                    <div className="mt-3 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                            style={{ width: `${todayProgressPercent}%` }}
+                            className="h-full bg-cyan-500 transition-all duration-500"
+                        />
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-1">Hedef: {stats.todayCheckInGoal}</p>
+                </Card>
+            </div>
+
+            {/* Alerts */}
+            {(stats.lowStockAlerts > 0 || stats.healthWarnings > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {stats.lowStockAlerts > 0 && (
+                        <Card className="p-4 border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                                    <Package className="w-5 h-5 text-orange-600 dark:text-orange-500" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-zinc-900 dark:text-white">
+                                        {stats.lowStockAlerts} Stok Uyarısı
+                                    </p>
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                        Kritik stok seviyesi
+                                    </p>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
+                    {stats.healthWarnings > 0 && (
+                        <Card className="p-4 border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                    <HeartPulse className="w-5 h-5 text-red-600 dark:text-red-500" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-zinc-900 dark:text-white">
+                                        {stats.healthWarnings} Sağlık Notu
+                                    </p>
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                        Dikkat gerektiren üyeler
+                                    </p>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+                </div>
+            )}
+
+            {/* System Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-zinc-500 mb-1">Bölge</p>
+                            <p className="font-semibold text-zinc-900 dark:text-white">
+                                {vercelInfo.region}
+                            </p>
+                        </div>
+                        <Server className="w-5 h-5 text-zinc-400" />
+                    </div>
+                </Card>
+
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-zinc-500 mb-1">Sürüm</p>
+                            <p className="font-semibold text-zinc-900 dark:text-white font-mono">
+                                {vercelInfo.version}
+                            </p>
+                        </div>
+                        <Database className="w-5 h-5 text-zinc-400" />
+                    </div>
+                </Card>
+
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-zinc-500 mb-1">RAM Kullanımı</p>
+                            <p className="font-semibold text-zinc-900 dark:text-white">
+                                {sysMetrics.ram}%
+                            </p>
+                        </div>
+                        <Activity className="w-5 h-5 text-zinc-400" />
                     </div>
                 </Card>
             </div>
 
-            {/* --- NODE INFRASTRUCTURE LIST --- */}
-            <div className="space-y-8">
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-8">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
-                            <Database className="w-6 h-6 text-zinc-400" />
-                        </div>
-                        <h2 className="text-2xl font-black text-white tracking-tight uppercase">Sistem Salonları</h2>
+            {/* Live Logs */}
+            {realtimeLogs.length > 0 && (
+                <Card className="p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <h3 className="font-semibold text-zinc-900 dark:text-white">
+                            Canlı Sistem Logları
+                        </h3>
                     </div>
-                    <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-orange-500 transition-colors" />
+                    <div className="space-y-2 font-mono text-xs">
+                        {realtimeLogs.map((log, i) => (
+                            <div key={i} className="flex items-start gap-3 text-zinc-600 dark:text-zinc-400">
+                                <span className="text-zinc-400 dark:text-zinc-600 shrink-0">
+                                    {new Date(log.created_at).toLocaleTimeString('tr-TR')}
+                                </span>
+                                <span className={cn(
+                                    "font-semibold shrink-0",
+                                    log.event_type?.includes('error') ? 'text-red-500' : 'text-green-500'
+                                )}>
+                                    [{log.event_type?.toUpperCase()}]
+                                </span>
+                                <span className="truncate">{log.message}</span>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            {/* Gyms List */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                        Salonlar ({filteredGyms.length})
+                    </h2>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                         <input
-                            placeholder="Evrensel Arama..."
+                            type="text"
+                            placeholder="Salon ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-zinc-950/50 border border-white/5 rounded-2xl pl-12 pr-6 h-14 text-sm font-bold focus:outline-none focus:border-orange-500/50 transition-all w-80 focus:w-[400px]"
+                            className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                 </div>
 
-                <div className="grid gap-4">
+                <div className="space-y-3">
                     {filteredGyms.map((gym) => {
                         const gymUptime = gymUptimes[gym.id] || 0;
-                        const uptimeBars = Math.round(gymUptime / 20); // 0-5 bar
+                        const isActive = gym.settings?.is_activated;
 
                         return (
-                            <div
+                            <Card
                                 key={gym.id}
                                 onClick={() => router.push(`/gyms/${gym.id}`)}
-                                className="bg-[#050505] border border-white/[0.04] rounded-[1.5rem] hover:border-orange-500/30 hover:bg-zinc-900/10 transition-all group cursor-pointer overflow-hidden relative"
+                                className="p-4 hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer"
                             >
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center p-7">
-                                    <div className="lg:col-span-4 flex items-center gap-6">
-                                        <div className="w-14 h-14 bg-zinc-950 border border-white/5 rounded-xl flex items-center justify-center text-zinc-700 group-hover:text-orange-500 group-hover:border-orange-500/20 transition-all shadow-inner relative">
-                                            <Wifi className="w-6 h-6 relative z-10" />
-                                            <div className="absolute inset-0 bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        <div className={cn(
+                                            "p-2 rounded-lg shrink-0",
+                                            isActive
+                                                ? "bg-green-100 dark:bg-green-900/20"
+                                                : "bg-orange-100 dark:bg-orange-900/20"
+                                        )}>
+                                            <Building2 className={cn(
+                                                "w-5 h-5",
+                                                isActive
+                                                    ? "text-green-600 dark:text-green-500"
+                                                    : "text-orange-600 dark:text-orange-500"
+                                            )} />
                                         </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="text-base font-black text-white truncate group-hover:text-orange-500 transition-colors uppercase tracking-tight">{gym.name}</h3>
-                                                {!gym.settings?.is_activated && (
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold text-zinc-900 dark:text-white truncate">
+                                                    {gym.name}
+                                                </h3>
+                                                {!isActive && (
+                                                    <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 rounded">
+                                                        Deneme
+                                                    </span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest bg-white/[0.02] px-2 py-0.5 rounded border border-white/[0.05]">
-                                                    SALON::{gym.id.slice(0, 8)}
+                                            <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
+                                                <span className="font-mono">
+                                                    {gym.id.slice(0, 8)}
                                                 </span>
-                                                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">{vercelInfo.version}</span>
+                                                <span className="hidden sm:inline">•</span>
+                                                <span className="hidden sm:inline">
+                                                    Uptime: {gymUptime.toFixed(1)}%
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div className="lg:col-span-5 grid grid-cols-2 gap-12 border-x border-white/[0.04] px-12">
-                                        <div className="space-y-1.5">
-                                            <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em]">Kararlılık</p>
-                                            <div className="flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest">
-                                                <div className="flex gap-0.5">
-                                                    {[1, 2, 3, 4, 5].map(i => (
-                                                        <div
-                                                            key={i}
-                                                            className={`w-1 h-3 rounded-sm ${i <= uptimeBars ? 'bg-emerald-500/80' : 'bg-zinc-800'}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                                {gymUptime.toFixed(1)}%
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em]">Son Dağıtım</p>
-                                            <p className="text-[10px] font-mono text-zinc-400 uppercase">{new Date(gym.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="lg:col-span-3 flex items-center justify-end gap-8">
-                                        <div className="text-right">
-                                            <p className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em] mb-1">Bellek Kullanımı</p>
-                                            <p className="text-[11px] font-black text-white tabular-nums font-mono uppercase bg-white/5 px-2 py-0.5 rounded">{sysMetrics.ram}%</p>
-                                        </div>
-                                        <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-zinc-700 group-hover:text-white group-hover:bg-orange-500 transition-all shadow-lg group-hover:shadow-orange-500/20">
-                                            <ArrowUpRight className="w-5 h-5" />
-                                        </div>
-                                    </div>
+                                    <ChevronRight className="w-5 h-5 text-zinc-400 shrink-0" />
                                 </div>
-                            </div>
+                            </Card>
                         );
                     })}
                 </div>
             </div>
 
-            {/* --- GLOBAL ANNOUNCEMENT MODAL --- */}
+            {/* Announcement Modal */}
             <AnimatePresence>
                 {isAnnouncementOpen && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAnnouncementOpen(false)} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
-                        <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} className="w-full max-w-xl bg-[#050505] border border-white/10 rounded-[2.5rem] p-10 relative z-10 shadow-2xl overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
-
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500 border border-orange-500/20 shadow-lg">
-                                        <Bell className="w-6 h-6" />
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsAnnouncementOpen(false)}
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl p-6 relative z-10 shadow-xl"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                                        <Bell className="w-5 h-5 text-blue-600 dark:text-blue-500" />
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-black text-white uppercase tracking-tight">Küresel Duyuru</h2>
-                                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-1">Yayın :: Tüm Salonlar Aktif</p>
-                                    </div>
+                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+                                        Duyuru Gönder
+                                    </h2>
                                 </div>
-                                <button onClick={() => setIsAnnouncementOpen(false)} className="p-2 text-zinc-500 hover:text-white transition-colors cursor-pointer"><X className="w-6 h-6" /></button>
+                                <button
+                                    onClick={() => setIsAnnouncementOpen(false)}
+                                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-zinc-500" />
+                                </button>
                             </div>
 
-                            <form onSubmit={handleSendAnnouncement} className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Mesaj İçeriği</label>
+                            <form onSubmit={handleSendAnnouncement} className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 block">
+                                        Mesaj
+                                    </label>
                                     <textarea
                                         autoFocus
                                         value={announcementMsg}
                                         onChange={(e) => setAnnouncementMsg(e.target.value)}
-                                        placeholder="Tüm salonlara iletilecek mesajı girin..."
-                                        className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all resize-none font-medium"
+                                        placeholder="Tüm salonlara gönderilecek mesajı yazın..."
+                                        className="w-full h-32 px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                     />
                                 </div>
 
-                                <div className="p-5 bg-orange-500/5 border border-orange-500/10 rounded-2xl">
-                                    <p className="text-[11px] text-zinc-400 leading-relaxed italic uppercase tracking-tight">Bu işlem geri alınamaz. Mesaj, sistemdeki tüm salonların bildirim paneline anlık olarak düşecektir.</p>
+                                <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-lg">
+                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                                        Bu mesaj tüm salon yöneticilerine bildirim olarak gönderilecektir.
+                                    </p>
                                 </div>
 
-                                <div className="flex gap-4">
-                                    <Button type="button" onClick={() => setIsAnnouncementOpen(false)} className="flex-1 h-14 bg-white/5 border border-white/5 rounded-2xl font-black text-[10px] tracking-widest uppercase">İPTAL</Button>
+                                <div className="flex gap-3">
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsAnnouncementOpen(false)}
+                                        variant="secondary"
+                                        className="flex-1"
+                                    >
+                                        İptal
+                                    </Button>
                                     <Button
                                         type="submit"
-                                        isLoading={announcementLoading}
                                         variant="primary"
-                                        className="flex-[2] h-14 rounded-2xl font-black text-[10px] tracking-widest uppercase shadow-2xl shadow-orange-500/20"
+                                        isLoading={announcementLoading}
+                                        className="flex-1"
                                     >
-                                        DUYURUYU YAYINLA
+                                        Gönder
                                     </Button>
                                 </div>
                             </form>
