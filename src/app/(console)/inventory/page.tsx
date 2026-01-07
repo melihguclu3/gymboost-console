@@ -96,12 +96,7 @@ export default function InventoryPage() {
                         Küresel stok ve ürün takibi
                     </p>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100">
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filtrele
-                    </Button>
-                </div>
+                <div></div>
             </div>
 
             {/* Metrics */}
