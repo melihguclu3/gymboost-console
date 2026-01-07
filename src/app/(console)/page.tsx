@@ -52,7 +52,6 @@ export default function SuperAdminPage() {
         totalGyms: 0,
         activeMembers: 0,
         totalRevenue: 0,
-        trialGyms: 0,
         todayCheckIns: 0,
         lowStockAlerts: 0,
         healthWarnings: 0,
@@ -248,7 +247,6 @@ export default function SuperAdminPage() {
                     totalGyms: activeGyms.length,
                     activeMembers: memberCount || 0,
                     totalRevenue: thisMonthRevenue,
-                    trialGyms: activeGyms.filter(g => !g.settings?.is_activated).length,
                     todayCheckIns: checkInCount || 0,
                     lowStockAlerts: lowStockCount || 0,
                     healthWarnings: healthWarningCount || 0,
@@ -428,11 +426,6 @@ export default function SuperAdminPage() {
                         <div className="p-2 bg-blue-600 rounded-lg">
                             <Building2 className="w-5 h-5 text-white" />
                         </div>
-                        {stats.trialGyms > 0 && (
-                            <div className="text-xs font-semibold px-2 py-1 rounded bg-orange-600 text-white">
-                                {stats.trialGyms} deneme
-                            </div>
-                        )}
                     </div>
                     <p className="text-2xl font-bold text-zinc-100">
                         {stats.totalGyms}
@@ -628,25 +621,13 @@ export default function SuperAdminPage() {
                             >
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <div className={cn(
-                                            "p-2 rounded-lg shrink-0",
-                                            isActive
-                                                ? "bg-green-600"
-                                                : "bg-orange-600"
-                                        )}>
+                                        <div className="p-2 bg-blue-600 rounded-lg shrink-0">
                                             <Building2 className="w-5 h-5 text-white" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-zinc-100 truncate">
-                                                    {gym.name}
-                                                </h3>
-                                                {!isActive && (
-                                                    <span className="text-xs px-2 py-0.5 bg-orange-600 text-white rounded font-medium">
-                                                        Deneme
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <h3 className="font-semibold text-zinc-100 truncate">
+                                                {gym.name}
+                                            </h3>
                                             <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
                                                 <span className="font-mono">
                                                     {gym.id.slice(0, 8)}
