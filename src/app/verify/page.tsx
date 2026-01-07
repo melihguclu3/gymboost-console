@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input } from '@/components/ui';
-import { ShieldCheck, Mail, Lock, ArrowRight, Smartphone, Sparkles, Loader2, RefreshCcw, Send } from 'lucide-react';
+import { Card, Button } from '@/components/ui';
+import { ShieldCheck, Mail, ArrowRight, RefreshCcw, Send } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function SuperVerifyPage() {
@@ -29,7 +29,6 @@ export default function SuperVerifyPage() {
     const [countdown, setCountdown] = useState(0);
     const [resendCountdown, setResendCountdown] = useState(0);
 
-    // Countdown timer effect
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (countdown > 0) {
@@ -48,7 +47,7 @@ export default function SuperVerifyPage() {
 
     const sendEmailCode = async () => {
         if (!userEmail) {
-            setError('E-posta bulunamadi. Lutfen yeniden giris yapin.');
+            setError('E-posta bulunamadı. Lütfen yeniden giriş yapın.');
             return;
         }
         setIsLoading(true);
@@ -90,7 +89,7 @@ export default function SuperVerifyPage() {
 
     const verifyCode = async () => {
         if (!userEmail) {
-            setError('E-posta bulunamadi. Lutfen yeniden giris yapin.');
+            setError('E-posta bulunamadı. Lütfen yeniden giriş yapın.');
             return;
         }
         setIsLoading(true);
@@ -118,38 +117,38 @@ export default function SuperVerifyPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden text-white">
-            {/* Background Decor */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-500/10 blur-[120px] rounded-full" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-red-500/10 blur-[120px] rounded-full" />
-
-            <Card className="w-full max-w-md bg-zinc-950 border-white/10 shadow-2xl rounded-[3rem] overflow-hidden relative z-10 p-8">
-                <div className="text-center mb-10">
-                    <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-500/20 rotate-3 transition-transform duration-500">
-                        <ShieldCheck className="w-10 h-10 text-white" />
+        <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+            <Card className="w-full max-w-md p-8 sm:p-10 bg-zinc-900 border-zinc-800 shadow-2xl">
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <ShieldCheck className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-white tracking-tight uppercase text-center">Güvenlik Doğrulaması</h1>
-                    <p className="text-zinc-500 text-sm font-bold mt-2 text-center tracking-widest uppercase opacity-80">Sistem Sahibi Doğrulaması</p>
+                    <h1 className="text-2xl font-bold text-white mb-2">
+                        Güvenlik Doğrulaması
+                    </h1>
+                    <p className="text-sm text-zinc-400">
+                        E-posta doğrulaması gerekli
+                    </p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-2xl text-red-400 text-xs font-bold text-center animate-shake">
-                        {error}
+                    <div className="mb-6 p-3 bg-red-600 text-white rounded-lg">
+                        <p className="text-sm text-center font-medium">{error}</p>
                     </div>
                 )}
 
                 {step === 'request' ? (
                     <div className="space-y-6">
-                        <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5 text-center text-white">
-                            <Mail className="w-8 h-8 text-zinc-600 mx-auto mb-4" />
-                            <p className="text-zinc-400 text-sm leading-relaxed text-center">
-                                Sisteme tam yetki ile erişmek için <span className="text-white font-bold">kayıtlı e-posta adresinize</span> bir güvenlik kodu gönderilecektir.
+                        <div className="p-5 bg-zinc-800 rounded-lg border border-zinc-700 text-center">
+                            <Mail className="w-8 h-8 text-zinc-400 mx-auto mb-3" />
+                            <p className="text-sm text-zinc-300 leading-relaxed">
+                                Sisteme tam yetki ile erişmek için <span className="text-white font-semibold">kayıtlı e-posta adresinize</span> bir güvenlik kodu gönderilecektir.
                             </p>
                         </div>
                         <Button
                             onClick={sendEmailCode}
                             isLoading={isLoading}
-                            className="w-full h-16 bg-white text-black hover:bg-zinc-200 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-white/5 text-xs text-center"
+                            className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white font-semibold"
                         >
                             <Send className="w-4 h-4 mr-2" /> E-posta Kodu Gönder
                         </Button>
@@ -157,45 +156,47 @@ export default function SuperVerifyPage() {
                 ) : (
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 text-center block">Doğrulama Kodu</label>
+                            <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                                Doğrulama Kodu
+                            </label>
                             <input
                                 type="text"
                                 maxLength={6}
-                                placeholder="000 000"
+                                placeholder="000000"
                                 value={code}
                                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                                className={`w-full p-5 bg-zinc-900 border rounded-2xl text-white text-3xl font-black tracking-[0.5em] text-center outline-none transition-all ${countdown > 0 ? 'border-orange-500/50 focus:border-orange-500' : 'border-red-500/50 opacity-50 cursor-not-allowed'}`}
+                                className={`w-full p-4 bg-zinc-800 border rounded-lg text-white text-2xl font-bold tracking-widest text-center outline-none transition-all ${countdown > 0 ? 'border-zinc-700 focus:border-orange-600 focus:ring-2 focus:ring-orange-600/50' : 'border-red-600 opacity-50 cursor-not-allowed'}`}
                                 disabled={countdown === 0}
                             />
                             {countdown > 0 ? (
-                                <p className="text-center text-xs font-bold text-orange-500 animate-pulse">
+                                <p className="text-center text-sm font-medium text-orange-500">
                                     Kalan Süre: {countdown} saniye
                                 </p>
                             ) : (
-                                <p className="text-center text-xs font-bold text-red-500">
-                                    Süre doldu.
+                                <p className="text-center text-sm font-medium text-red-500">
+                                    Süre doldu
                                 </p>
                             )}
                         </div>
                         <Button
                             onClick={handleVerify}
                             disabled={countdown === 0 || isLoading}
-                            className="w-full h-16 bg-gradient-to-r from-orange-600 to-red-600 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-orange-500/30 text-xs text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isLoading ? 'Kontrol Ediliyor...' : 'Sistemi Aç'} <ArrowRight className="w-5 h-5 ml-2" />
+                            {isLoading ? 'Kontrol Ediliyor...' : 'Sistemi Aç'} <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                         <button
-                            onClick={() => sendEmailCode()} // Yeniden başlat
+                            onClick={() => sendEmailCode()}
                             disabled={resendCountdown > 0}
-                            className={`w-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer ${resendCountdown > 0 ? 'text-zinc-600 opacity-50' : 'text-white hover:text-orange-500'}`}
+                            className={`w-full text-sm font-medium flex items-center justify-center gap-2 transition-colors ${resendCountdown > 0 ? 'text-zinc-600 cursor-not-allowed' : 'text-zinc-400 hover:text-white'}`}
                         >
-                            <RefreshCcw className="w-3 h-3" /> {resendCountdown > 0 ? `Tekrar göndermek için ${resendCountdown} sn` : 'Yeni Kod İste'}
+                            <RefreshCcw className="w-4 h-4" /> {resendCountdown > 0 ? `Tekrar göndermek için ${resendCountdown} sn` : 'Yeni Kod İste'}
                         </button>
                     </div>
                 )}
 
-                <div className="mt-10 pt-8 border-t border-white/5 text-center text-white">
-                    <p className="text-[9px] text-zinc-700 font-black uppercase tracking-[0.2em] text-center">
+                <div className="mt-8 pt-6 border-t border-zinc-800 text-center">
+                    <p className="text-xs text-zinc-500">
                         GymBoost Security Protocol v2.2
                     </p>
                 </div>
