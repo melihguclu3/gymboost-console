@@ -21,7 +21,8 @@ import {
     Activity,
     Search,
     ChevronRight,
-    Clock
+    Clock,
+    Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,6 +77,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
         is_ai_enabled: true,
         is_inventory_enabled: true,
         is_pt_enabled: true,
+        pro_model_enabled: false,
         max_members: 500,
         max_trainers: 10,
         subscription_tier: 'pro'
@@ -100,6 +102,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                     is_ai_enabled: s.is_ai_enabled ?? true,
                     is_inventory_enabled: s.is_inventory_enabled ?? true,
                     is_pt_enabled: s.is_pt_enabled ?? true,
+                    pro_model_enabled: s.pro_model_enabled ?? false,
                     max_members: s.max_members || 500,
                     max_trainers: s.max_trainers || 10,
                     subscription_tier: s.subscription_tier || 'pro'
@@ -115,10 +118,38 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
 
             const totalRev = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
+            // Calculate real revenue trend (last 6 months)
+            const now = new Date();
+            const revenueTrend: number[] = [];
+            let maxRevenue = 0;
+
+            for (let i = 5; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+                const monthlySum = payments?.filter(p => {
+                    const pDate = new Date(p.created_at);
+                    return pDate >= monthDate && pDate <= monthEnd;
+                }).reduce((sum, p) => sum + p.amount, 0) || 0;
+
+                if (monthlySum > maxRevenue) maxRevenue = monthlySum;
+                revenueTrend.push(monthlySum);
+            }
+
+            // Normalize to percentages (0-100)
+            const normalizedTrend = revenueTrend.map(v =>
+                maxRevenue > 0 ? Math.round((v / maxRevenue) * 100) : 0
+            );
+
+            // This month's revenue
+            const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthlyRevenue = payments?.filter(p => new Date(p.created_at) >= thisMonth)
+                .reduce((sum, p) => sum + p.amount, 0) || 0;
+
             setStats({
                 totalMembers: members || 0, activeMembers: members || 0,
                 totalTrainers: trainers || 0, totalRevenue: totalRev,
-                monthlyRevenue: 0, revenueTrend: [40, 60, 45, 80, 55, 90],
+                monthlyRevenue, revenueTrend: normalizedTrend,
                 recentPayments: payments?.slice(0, 5) || []
             });
         } catch (error) { console.error(error); } finally { setLoading(false); }
@@ -142,6 +173,7 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                         is_ai_enabled: configForm.is_ai_enabled,
                         is_inventory_enabled: configForm.is_inventory_enabled,
                         is_pt_enabled: configForm.is_pt_enabled,
+                        pro_model_enabled: configForm.pro_model_enabled,
                         max_members: configForm.max_members,
                         max_trainers: configForm.max_trainers,
                         subscription_tier: configForm.subscription_tier,
@@ -348,9 +380,10 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                 {/* Modules */}
                                 <div>
                                     <label className="text-sm font-medium text-zinc-400 mb-3 block">Aktif Modüller</label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         {[
                                             { id: 'is_ai_enabled', label: 'AI Asistan', icon: Zap },
+                                            { id: 'pro_model_enabled', label: 'AI Pro Model', icon: Sparkles, premium: true },
                                             { id: 'is_inventory_enabled', label: 'Envanter', icon: Package },
                                             { id: 'is_pt_enabled', label: 'Eğitmen', icon: Dumbbell },
                                         ].map((module) => (
@@ -360,7 +393,9 @@ export default function GymDetailPage({ params }: { params: Promise<{ id: string
                                                 className={cn(
                                                     "p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-3",
                                                     (configForm as any)[module.id]
-                                                        ? "bg-blue-600/10 border-blue-600/30 text-blue-500"
+                                                        ? (module as any).premium
+                                                            ? "bg-purple-600/10 border-purple-600/30 text-purple-400"
+                                                            : "bg-blue-600/10 border-blue-600/30 text-blue-500"
                                                         : "bg-zinc-900 border-zinc-700/50 text-zinc-500 hover:border-zinc-600"
                                                 )}
                                             >

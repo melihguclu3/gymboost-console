@@ -307,45 +307,50 @@ export default function SystemHealthPage() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Latency Chart */}
-                <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-600/10 text-blue-500 rounded-lg">
-                                <Activity className="w-5 h-5" />
-                            </div>
-                            <h3 className="font-semibold text-zinc-100">Gecikme Analizi</h3>
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50 flex flex-col">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-blue-500" />
+                            <h3 className="font-medium text-zinc-100 text-sm">Gecikme Analizi</h3>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">
+                        <div className="flex items-center gap-1.5 text-xs text-green-500">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                             Canlı
                         </div>
                     </div>
 
-                    <div className="h-48 flex items-end gap-2">
-                        {responseHistory.map((val, i) => {
-                            const max = Math.max(...responseHistory, 200);
-                            const height = (val / max) * 100;
+                    <div className="flex-1 flex items-end gap-0.5 min-h-[120px]">
+                        {Array.from({ length: 20 }).map((_, i) => {
+                            const val = responseHistory[i];
+                            const hasData = val !== undefined;
+                            const max = Math.max(...responseHistory, 100);
+                            const heightPercent = hasData ? Math.max((val / max) * 100, 5) : 0;
+
                             return (
-                                <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
-                                    <motion.div
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${Math.max(height, 5)}%` }}
+                                <div key={i} className="flex-1 h-full flex items-end group relative">
+                                    <div
+                                        style={{ height: hasData ? `${heightPercent}%` : '2px' }}
                                         className={cn(
-                                            "w-full rounded-t transition-all duration-300",
-                                            val < 100 ? 'bg-blue-600' : 'bg-orange-500'
+                                            "w-full rounded-sm transition-all duration-300",
+                                            hasData
+                                                ? val < 100 ? 'bg-blue-500' : val < 200 ? 'bg-orange-500' : 'bg-red-500'
+                                                : 'bg-zinc-700/30'
                                         )}
                                     />
-                                    <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-xs text-zinc-100 px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
-                                        {val}ms
-                                    </div>
+                                    {hasData && (
+                                        <div className="opacity-0 group-hover:opacity-100 absolute -top-5 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-[10px] text-zinc-100 px-1 py-0.5 rounded whitespace-nowrap z-10">
+                                            {val}ms
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
-                        {responseHistory.length === 0 && (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
-                                Veri toplanıyor...
-                            </div>
-                        )}
+                    </div>
+
+                    <div className="flex justify-between mt-2 text-[10px] text-zinc-500">
+                        <span>Eski</span>
+                        <span className="text-zinc-400 font-mono">{responseHistory.length > 0 ? `${responseHistory[responseHistory.length - 1]}ms` : '—'}</span>
+                        <span>Yeni</span>
                     </div>
                 </Card>
 

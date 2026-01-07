@@ -120,7 +120,7 @@ export default function SuperVerifyPage() {
         <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
             <Card className="w-full max-w-md p-8 sm:p-10 bg-zinc-900 border-zinc-800 shadow-2xl">
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <ShieldCheck className="w-8 h-8 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold text-white mb-2">
@@ -148,7 +148,7 @@ export default function SuperVerifyPage() {
                         <Button
                             onClick={sendEmailCode}
                             isLoading={isLoading}
-                            className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white font-semibold"
+                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                         >
                             <Send className="w-4 h-4 mr-2" /> E-posta Kodu Gönder
                         </Button>
@@ -165,11 +165,11 @@ export default function SuperVerifyPage() {
                                 placeholder="000000"
                                 value={code}
                                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                                className={`w-full p-4 bg-zinc-800 border rounded-lg text-white text-2xl font-bold tracking-widest text-center outline-none transition-all ${countdown > 0 ? 'border-zinc-700 focus:border-orange-600 focus:ring-2 focus:ring-orange-600/50' : 'border-red-600 opacity-50 cursor-not-allowed'}`}
+                                className={`w-full p-4 bg-zinc-800 border rounded-lg text-white text-2xl font-bold tracking-widest text-center outline-none transition-all ${countdown > 0 ? 'border-zinc-700 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/50' : 'border-red-600 opacity-50 cursor-not-allowed'}`}
                                 disabled={countdown === 0}
                             />
                             {countdown > 0 ? (
-                                <p className="text-center text-sm font-medium text-orange-500">
+                                <p className="text-center text-sm font-medium text-blue-500">
                                     Kalan Süre: {countdown} saniye
                                 </p>
                             ) : (
@@ -181,7 +181,7 @@ export default function SuperVerifyPage() {
                         <Button
                             onClick={handleVerify}
                             disabled={countdown === 0 || isLoading}
-                            className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? 'Kontrol Ediliyor...' : 'Sistemi Aç'} <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -197,7 +197,7 @@ export default function SuperVerifyPage() {
 
                 <div className="mt-8 pt-6 border-t border-zinc-800 text-center">
                     <p className="text-xs text-zinc-500">
-                        GymBoost Security Protocol v2.2
+                        GymBoost Konsol v0.1.3
                     </p>
                 </div>
             </Card>

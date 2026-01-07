@@ -14,5 +14,5 @@ export function maskEmail(email: string | null | undefined) {
 
 export function maskId(id: string | null | undefined) {
   if (!id) return '---';
-  return `UUID::${id.slice(0, 4)}...${id.slice(-4)}`;
+  return `${id.slice(0, 4)}...${id.slice(-4)}`;
 }

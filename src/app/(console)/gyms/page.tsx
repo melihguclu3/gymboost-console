@@ -16,7 +16,11 @@ import {
     Copy,
     RotateCcw,
     Settings,
-    Link as LinkIcon
+    Link as LinkIcon,
+    Zap,
+    Sparkles,
+    Package,
+    Dumbbell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,7 +39,18 @@ export default function SuperAdminGyms() {
     const [showInviteSuccess, setShowInviteSuccess] = useState(false);
     const [generatedLink, setGeneratedLink] = useState('');
     const [editingGym, setEditingGym] = useState<any>(null);
-    const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', status: 'active', notificationEmail: '' });
+    const [form, setForm] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        status: 'active',
+        notificationEmail: '',
+        is_ai_enabled: true,
+        is_inventory_enabled: true,
+        is_pt_enabled: true,
+        pro_model_enabled: false
+    });
     const [actionLoading, setActionLoading] = useState(false);
 
     const supabase = createClient();
@@ -85,7 +100,11 @@ export default function SuperAdminGyms() {
                     settings: {
                         ...editingGym.settings,
                         status: form.status,
-                        notification_email: form.notificationEmail
+                        notification_email: form.notificationEmail,
+                        is_ai_enabled: form.is_ai_enabled,
+                        is_inventory_enabled: form.is_inventory_enabled,
+                        is_pt_enabled: form.is_pt_enabled,
+                        pro_model_enabled: form.pro_model_enabled
                     }
                 }).eq('id', editingGym.id);
                 if (error) throw error;
@@ -99,7 +118,11 @@ export default function SuperAdminGyms() {
                         status: 'pending_activation',
                         activation_token: activationToken,
                         is_activated: false,
-                        notification_email: form.notificationEmail
+                        notification_email: form.notificationEmail,
+                        is_ai_enabled: form.is_ai_enabled,
+                        is_inventory_enabled: form.is_inventory_enabled,
+                        is_pt_enabled: form.is_pt_enabled,
+                        pro_model_enabled: form.pro_model_enabled
                     }
                 }).select().single();
                 if (gymError) throw gymError;
@@ -166,7 +189,22 @@ export default function SuperAdminGyms() {
                         {showArchived ? 'Aktifleri Göster' : 'Arşivi Göster'}
                     </Button>
                     <Button
-                        onClick={() => { setEditingGym(null); setForm({ name: '', email: '', phone: '', address: '', status: 'active', notificationEmail: '' }); setShowModal(true); }}
+                        onClick={() => {
+                                        setEditingGym(null);
+                                        setForm({
+                                            name: '',
+                                            email: '',
+                                            phone: '',
+                                            address: '',
+                                            status: 'active',
+                                            notificationEmail: '',
+                                            is_ai_enabled: true,
+                                            is_inventory_enabled: true,
+                                            is_pt_enabled: true,
+                                            pro_model_enabled: false
+                                        });
+                                        setShowModal(true);
+                                    }}
                         variant="primary"
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
@@ -205,7 +243,7 @@ export default function SuperAdminGyms() {
                                         <h3 className="font-semibold text-zinc-100 truncate">
                                             {gym.name}
                                         </h3>
-                                        <div className="flex items-center gap-2 mt-1">
+                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                                             <span className={cn(
                                                 "text-xs px-2 py-0.5 rounded font-medium",
                                                 isArchived ? 'bg-red-600 text-white' :
@@ -216,6 +254,13 @@ export default function SuperAdminGyms() {
                                             <span className="text-xs text-zinc-300">
                                                 {memberCounts[gym.id] ?? 0} üye
                                             </span>
+                                            {/* Feature badges */}
+                                            {gym.settings?.pro_model_enabled && (
+                                                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-purple-600/20 text-purple-400 font-medium">
+                                                    <Sparkles className="w-3 h-3" />
+                                                    Pro
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -233,7 +278,11 @@ export default function SuperAdminGyms() {
                                                 phone: gym.phone || '',
                                                 address: gym.address || '',
                                                 status: gym.settings?.status || 'active',
-                                                notificationEmail: gym.settings?.notification_email || ''
+                                                notificationEmail: gym.settings?.notification_email || '',
+                                                is_ai_enabled: gym.settings?.is_ai_enabled ?? true,
+                                                is_inventory_enabled: gym.settings?.is_inventory_enabled ?? true,
+                                                is_pt_enabled: gym.settings?.is_pt_enabled ?? true,
+                                                pro_model_enabled: gym.settings?.pro_model_enabled ?? false
                                             });
                                             setShowModal(true);
                                         }}
@@ -347,6 +396,35 @@ export default function SuperAdminGyms() {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Module Toggles */}
+                                <div>
+                                    <label className="text-sm font-medium text-zinc-400 mb-3 block">Aktif Modüller</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            { id: 'is_ai_enabled', label: 'AI Asistan', icon: Zap },
+                                            { id: 'pro_model_enabled', label: 'AI Pro Model', icon: Sparkles, premium: true },
+                                            { id: 'is_inventory_enabled', label: 'Envanter', icon: Package },
+                                            { id: 'is_pt_enabled', label: 'Eğitmen', icon: Dumbbell },
+                                        ].map((module) => (
+                                            <div
+                                                key={module.id}
+                                                onClick={() => setForm({ ...form, [module.id]: !(form as any)[module.id] })}
+                                                className={cn(
+                                                    "p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-2.5",
+                                                    (form as any)[module.id]
+                                                        ? (module as any).premium
+                                                            ? "bg-purple-600/10 border-purple-600/30 text-purple-400"
+                                                            : "bg-blue-600/10 border-blue-600/30 text-blue-500"
+                                                        : "bg-zinc-900 border-zinc-700/50 text-zinc-500 hover:border-zinc-600"
+                                                )}
+                                            >
+                                                <module.icon className="w-4 h-4" />
+                                                <span className="text-xs font-medium">{module.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
 
                                 {!editingGym && (
                                     <div className="p-4 bg-blue-600/10 border border-blue-600/30 rounded-lg">

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { GymSelector } from '@/components/GymSelector';
 import {
     Users,
     Search,
@@ -13,11 +14,9 @@ import {
     ArrowUpRight,
     ShieldAlert,
     Clock,
-    UserPlus,
-    Target
+    AlertTriangle
 } from 'lucide-react';
-import { cn, maskEmail, maskId } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface GlobalMember {
     id: string;
@@ -26,6 +25,7 @@ interface GlobalMember {
     phone: string;
     created_at: string;
     status: string;
+    gym_id: string;
     gyms: {
         name: string;
     } | null;
@@ -41,6 +41,7 @@ export default function GlobalUsersPage() {
     const [members, setMembers] = useState<GlobalMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
     const [stats, setStats] = useState({
         total: 0,
         active: 0,
@@ -50,46 +51,69 @@ export default function GlobalUsersPage() {
 
     const supabase = createClient();
 
-    useEffect(() => {
-        loadGlobalMembers();
-    }, []);
-
-    async function loadGlobalMembers() {
+    const loadGlobalMembers = useCallback(async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('users')
                 .select(`
-                    id, 
-                    full_name, 
-                    email, 
-                    phone, 
-                    created_at, 
+                    id,
+                    full_name,
+                    email,
+                    phone,
+                    created_at,
                     status,
+                    gym_id,
                     gyms (name),
                     memberships (status, end_date, plan_type)
                 `)
                 .eq('role', 'member')
                 .order('created_at', { ascending: false });
 
+            if (selectedGymId) {
+                query = query.eq('gym_id', selectedGymId);
+            }
+
+            const { data, error } = await query;
+
             if (error) throw error;
 
             if (data) {
                 setMembers(data as any);
 
-                const now = new Date();
-                const todayStr = now.toISOString().split('T')[0];
-                const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30)).toISOString();
+                const todayStr = new Date().toISOString().split('T')[0];
 
-                const activeCount = data.filter((m: any) => m.memberships?.some((ms: any) => ms.status === 'active')).length;
-
-                const atRiskCount = data.filter((m: any) =>
-                    m.status === 'suspended' ||
-                    (m.created_at < thirtyDaysAgo && m.status !== 'active')
+                // Active: has at least one active membership
+                const activeCount = data.filter((m: any) =>
+                    m.memberships?.some((ms: any) => ms.status === 'active')
                 ).length;
 
+                // At Risk: membership expired or will expire in next 7 days
+                const sevenDaysLater = new Date();
+                sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+                const sevenDaysStr = sevenDaysLater.toISOString().split('T')[0];
+
+                const atRiskCount = data.filter((m: any) => {
+                    // User is suspended
+                    if (m.status === 'suspended') return true;
+
+                    // Check if any membership is expiring soon or expired
+                    const activeMembership = m.memberships?.find((ms: any) => ms.status === 'active');
+                    if (activeMembership && activeMembership.end_date) {
+                        const endDate = activeMembership.end_date.split('T')[0];
+                        return endDate <= sevenDaysStr && endDate >= todayStr;
+                    }
+
+                    // No active membership at all
+                    return m.memberships?.length === 0 ||
+                        !m.memberships?.some((ms: any) => ms.status === 'active');
+                }).length;
+
+                // Expiring today
                 const expiringTodayCount = data.filter((m: any) =>
-                    m.memberships?.some((ms: any) => ms.end_date?.startsWith(todayStr))
+                    m.memberships?.some((ms: any) =>
+                        ms.status === 'active' && ms.end_date?.startsWith(todayStr)
+                    )
                 ).length;
 
                 setStats({
@@ -104,7 +128,11 @@ export default function GlobalUsersPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [supabase, selectedGymId]);
+
+    useEffect(() => {
+        loadGlobalMembers();
+    }, [loadGlobalMembers]);
 
     const filteredMembers = members.filter(m =>
         m.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -130,6 +158,29 @@ export default function GlobalUsersPage() {
         }
     };
 
+    const getMembershipBadge = (memberships: any[]) => {
+        if (!memberships || memberships.length === 0) {
+            return <span className="text-xs px-2 py-0.5 rounded bg-zinc-700 text-zinc-400">Üyelik Yok</span>;
+        }
+
+        const activeMembership = memberships.find(m => m.status === 'active');
+        if (!activeMembership) {
+            return <span className="text-xs px-2 py-0.5 rounded bg-red-600/10 text-red-400">Süresi Dolmuş</span>;
+        }
+
+        const endDate = new Date(activeMembership.end_date);
+        const today = new Date();
+        const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysLeft <= 0) {
+            return <span className="text-xs px-2 py-0.5 rounded bg-red-600/10 text-red-400">Süresi Doldu</span>;
+        }
+        if (daysLeft <= 7) {
+            return <span className="text-xs px-2 py-0.5 rounded bg-orange-600/10 text-orange-400">{daysLeft} gün kaldı</span>;
+        }
+        return <span className="text-xs px-2 py-0.5 rounded bg-emerald-600/10 text-emerald-400">{daysLeft} gün</span>;
+    };
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -148,23 +199,19 @@ export default function GlobalUsersPage() {
                         Üye Yönetimi
                     </h1>
                     <p className="text-sm text-zinc-300 mt-1">
-                        Toplam {stats.total} kayıtlı üye
+                        {selectedGymId ? 'Salon bazlı' : 'Tüm salonların'} üye listesi ({stats.total} üye)
                     </p>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100">
-                        <Target className="w-4 h-4 mr-2" />
-                        Analiz
-                    </Button>
-                    <Button variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20">
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        Yeni Üye
-                    </Button>
-                </div>
+                <GymSelector
+                    value={selectedGymId}
+                    onChange={setSelectedGymId}
+                    showAllOption={true}
+                    allLabel="Tüm Salonlar"
+                />
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-600/10 text-blue-500 rounded-lg">
@@ -183,7 +230,7 @@ export default function GlobalUsersPage() {
                             <UserCheck className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-zinc-300">Aktif Üye</p>
+                            <p className="text-sm font-medium text-zinc-300">Aktif Üyelik</p>
                             <p className="text-xl font-bold text-zinc-100">{stats.active}</p>
                         </div>
                     </div>
@@ -207,7 +254,7 @@ export default function GlobalUsersPage() {
                             <Clock className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-zinc-300">Biten Üyelikler</p>
+                            <p className="text-sm font-medium text-zinc-300">Bugün Bitiyor</p>
                             <p className="text-xl font-bold text-zinc-100">{stats.expiringToday}</p>
                         </div>
                     </div>
@@ -226,55 +273,71 @@ export default function GlobalUsersPage() {
                     />
                 </div>
 
-                <div className="space-y-2">
-                    {filteredMembers.map((member) => (
-                        <div
-                            key={member.id}
-                            onClick={() => router.push(`/users/${member.id}`)}
-                            className="group flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-zinc-800/30 hover:bg-zinc-800 border border-zinc-700/30 hover:border-blue-600/30 rounded-xl transition-all cursor-pointer"
-                        >
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-300 font-semibold shrink-0">
-                                    {member.full_name?.charAt(0)}
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
-                                        {member.full_name}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400">
-                                        <Mail className="w-3 h-3" />
-                                        <span className="truncate">{member.email}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto">
-                                <div className="flex flex-col sm:items-end gap-1 min-w-[120px]">
-                                    <span className="text-xs text-zinc-400 flex items-center gap-1">
-                                        <Building2 className="w-3 h-3" />
-                                        {member.gyms?.name || 'Bağımsız'}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                    <span className={cn(
-                                        "px-2.5 py-1 rounded text-xs font-medium min-w-[80px] text-center",
-                                        getStatusStyles(member.status)
-                                    )}>
-                                        {getStatusLabel(member.status)}
-                                    </span>
-                                    <ArrowUpRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-500 transition-colors" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-
-                    {filteredMembers.length === 0 && (
-                        <div className="text-center py-20 bg-zinc-800/20 rounded-2xl border border-dashed border-zinc-700">
-                            <Users className="w-12 h-12 mx-auto mb-4 text-zinc-600" />
-                            <p className="text-sm text-zinc-500">Arama kriterlerine uygun üye bulunamadı.</p>
-                        </div>
-                    )}
+                <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-zinc-900/50 text-zinc-400 border-b border-zinc-700/50">
+                            <tr>
+                                <th className="px-6 py-3 font-medium">Üye</th>
+                                {!selectedGymId && <th className="px-6 py-3 font-medium">Salon</th>}
+                                <th className="px-6 py-3 font-medium">Durum</th>
+                                <th className="px-6 py-3 font-medium">Üyelik</th>
+                                <th className="px-6 py-3 font-medium w-16"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-700/50">
+                            {filteredMembers.length > 0 ? filteredMembers.map((member) => (
+                                <tr
+                                    key={member.id}
+                                    onClick={() => router.push(`/users/${member.id}`)}
+                                    className="hover:bg-zinc-700/10 transition-colors cursor-pointer group"
+                                >
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-300 font-semibold text-sm">
+                                                {member.full_name?.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-zinc-200">{member.full_name}</div>
+                                                <div className="text-xs text-zinc-400 flex items-center gap-1">
+                                                    <Mail className="w-3 h-3" />
+                                                    {member.email}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    {!selectedGymId && (
+                                        <td className="px-6 py-4 text-zinc-300 text-xs">
+                                            <div className="flex items-center gap-2">
+                                                <Building2 className="w-3.5 h-3.5 text-zinc-500" />
+                                                {member.gyms?.name || 'Bağımsız'}
+                                            </div>
+                                        </td>
+                                    )}
+                                    <td className="px-6 py-4">
+                                        <span className={cn(
+                                            "px-2 py-1 rounded text-xs font-medium",
+                                            getStatusStyles(member.status)
+                                        )}>
+                                            {getStatusLabel(member.status)}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {getMembershipBadge(member.memberships)}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <ArrowUpRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-500 transition-colors" />
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={selectedGymId ? 4 : 5} className="px-6 py-12 text-center text-zinc-500">
+                                        <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                        {selectedGymId ? 'Bu salonda üye bulunamadı.' : 'Üye bulunamadı.'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

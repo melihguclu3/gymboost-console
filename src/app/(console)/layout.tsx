@@ -20,6 +20,7 @@ import { Logo } from '@/components/ui/Logo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { SystemHeartbeatSplash } from '@/components/SystemHeartbeatSplash';
+import { CommandPalette } from '@/components/CommandPalette';
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -93,7 +94,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                         </div>
                         <div>
                             <Logo className="h-5" />
-                            <p className="text-xs text-zinc-500 mt-0.5">Console v2.4</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">Konsol v0.1.3</p>
                         </div>
                     </div>
                 </div>
@@ -164,6 +165,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                     {children}
                 </div>
                 <SystemHeartbeatSplash />
+                <CommandPalette />
             </main>
 
             {/* Mobile Sidebar */}

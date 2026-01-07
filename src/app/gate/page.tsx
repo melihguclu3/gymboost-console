@@ -158,7 +158,7 @@ export default function MasterGatePage() {
                     <div className="flex items-center justify-center gap-2 text-zinc-500">
                         <ShieldCheck className="w-4 h-4" />
                         <p className="text-xs">
-                            GymBoost Console v2.4
+                            GymBoost Konsol v0.1.3
                         </p>
                     </div>
                 </div>

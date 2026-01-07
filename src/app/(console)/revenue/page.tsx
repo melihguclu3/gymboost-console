@@ -1,26 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, Button } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import { GymSelector } from '@/components/GymSelector';
 import {
     DollarSign,
     TrendingUp,
     CreditCard,
-    Calendar,
     ArrowUpRight,
     ArrowDownRight,
     Wallet,
-    Download
+    Download,
+    Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export default function RevenuePage() {
     const [loading, setLoading] = useState(true);
     const [transactions, setTransactions] = useState<any[]>([]);
+    const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
     const [stats, setStats] = useState({
         totalRevenue: 0,
         monthlyRevenue: 0,
@@ -28,36 +31,34 @@ export default function RevenuePage() {
         growth: 0,
         averageOrder: 0
     });
+    const [chartData, setChartData] = useState<{ month: string; amount: number; height: number }[]>([]);
 
     const supabase = createClient();
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const [chartData, setChartData] = useState<{ month: string; amount: number; height: number }[]>([]);
-
-    async function loadData() {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch all completed payments with basic info
-            const { data, error } = await supabase
+            let query = supabase
                 .from('payments')
                 .select('*, gyms(name), users(full_name)')
                 .eq('status', 'completed')
                 .order('created_at', { ascending: false });
+
+            if (selectedGymId) {
+                query = query.eq('gym_id', selectedGymId);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
             if (data) {
                 setTransactions(data);
 
-                // --- STATS CALCULATION ---
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
 
-                // Last Month logic: Handle flow from Jan to Dec of prev year
                 const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 const lastMonth = lastMonthDate.getMonth();
                 const lastMonthYear = lastMonthDate.getFullYear();
@@ -90,7 +91,7 @@ export default function RevenuePage() {
                     averageOrder: data.length > 0 ? total / data.length : 0
                 });
 
-                // --- CHART DATA CALCULATION (Last 12 Months) ---
+                // Chart data (Last 12 Months)
                 const last12Months = [];
                 let maxAmount = 0;
 
@@ -112,11 +113,10 @@ export default function RevenuePage() {
                     last12Months.push({
                         month: monthName,
                         amount: monthlySum,
-                        height: 0 // Will calculate after finding max
+                        height: 0
                     });
                 }
 
-                // Normalize heights (0-100%)
                 const finalChartData = last12Months.map(item => ({
                     ...item,
                     height: maxAmount > 0 ? Math.round((item.amount / maxAmount) * 100) : 0
@@ -129,8 +129,44 @@ export default function RevenuePage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [supabase, selectedGymId]);
 
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const handleExportCSV = () => {
+        if (transactions.length === 0) {
+            toast.error('Dışa aktarılacak veri yok');
+            return;
+        }
+
+        const headers = ['ID', 'Kullanıcı', 'Salon', 'Tarih', 'Tutar'];
+        const rows = transactions.map(t => [
+            t.id,
+            t.users?.full_name || 'Misafir',
+            t.gyms?.name || 'Bilinmiyor',
+            format(new Date(t.created_at), 'yyyy-MM-dd HH:mm'),
+            t.amount
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `gelir-raporu-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success('Rapor indirildi');
+    };
 
     if (loading) {
         return (
@@ -150,17 +186,29 @@ export default function RevenuePage() {
                         Gelir Yönetimi
                     </h1>
                     <p className="text-sm text-zinc-300 mt-1">
-                        Tüm salonların finansal özeti
+                        {selectedGymId ? 'Salon bazlı' : 'Tüm salonların'} finansal özeti
                     </p>
                 </div>
-                <Button variant="secondary" className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100">
-                    <Download className="w-4 h-4 mr-2" />
-                    Raporu İndir
-                </Button>
+                <div className="flex items-center gap-3">
+                    <GymSelector
+                        value={selectedGymId}
+                        onChange={setSelectedGymId}
+                        showAllOption={true}
+                        allLabel="Tüm Salonlar"
+                    />
+                    <Button
+                        onClick={handleExportCSV}
+                        variant="secondary"
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        CSV İndir
+                    </Button>
+                </div>
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="p-6 bg-zinc-800/50 border-zinc-700/50 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-4">
@@ -227,33 +275,22 @@ export default function RevenuePage() {
                 </Card>
             </div>
 
-            {/* Visual Chart Placeholder */}
+            {/* Visual Chart */}
             <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
                 <div className="flex items-center justify-between mb-8">
-                    <h3 className="font-semibold text-zinc-100">Gelir Akışı</h3>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            Abonelikler
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-400 ml-3">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" />
-                            Tekil Satış
-                        </div>
-                    </div>
+                    <h3 className="font-semibold text-zinc-100">Gelir Akışı (Son 12 Ay)</h3>
                 </div>
                 <div className="h-64 flex items-end gap-2 sm:gap-4 px-2">
                     {chartData.length > 0 ? chartData.map((item, i) => (
                         <div key={i} className="flex-1 group relative h-full flex flex-col justify-end gap-2">
-                            {/* Tooltip */}
                             <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 px-2 py-1 rounded text-xs text-zinc-100 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
                                 {item.amount.toLocaleString('tr-TR')} ₺
                             </div>
 
                             <motion.div
                                 initial={{ height: 0 }}
-                                animate={{ height: `${item.height}%` }}
-                                className="w-full bg-blue-600 rounded-t-sm group-hover:bg-blue-500 transition-colors relative min-h-[4px]"
+                                animate={{ height: `${Math.max(item.height, 2)}%` }}
+                                className="w-full bg-emerald-600 rounded-t-sm group-hover:bg-emerald-500 transition-colors relative min-h-[4px]"
                             >
                                 {item.height > 0 && (
                                     <div className="absolute top-0 left-0 w-full h-1 bg-white/20" />
@@ -281,13 +318,13 @@ export default function RevenuePage() {
                             <tr>
                                 <th className="px-6 py-3 font-medium">İşlem ID</th>
                                 <th className="px-6 py-3 font-medium">Kullanıcı</th>
-                                <th className="px-6 py-3 font-medium">Salon</th>
+                                {!selectedGymId && <th className="px-6 py-3 font-medium">Salon</th>}
                                 <th className="px-6 py-3 font-medium">Tarih</th>
                                 <th className="px-6 py-3 font-medium text-right">Tutar</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-700/50">
-                            {transactions.length > 0 ? transactions.map((t) => (
+                            {transactions.length > 0 ? transactions.slice(0, 50).map((t) => (
                                 <tr key={t.id} className="hover:bg-zinc-700/10 transition-colors">
                                     <td className="px-6 py-4 text-zinc-500 font-mono text-xs">
                                         #{t.id.slice(0, 8)}
@@ -295,9 +332,14 @@ export default function RevenuePage() {
                                     <td className="px-6 py-4 text-zinc-200 font-medium">
                                         {t.users?.full_name || 'Misafir'}
                                     </td>
-                                    <td className="px-6 py-4 text-zinc-400 text-xs">
-                                        {t.gyms?.name || 'Bilinmiyor'}
-                                    </td>
+                                    {!selectedGymId && (
+                                        <td className="px-6 py-4 text-zinc-400 text-xs">
+                                            <div className="flex items-center gap-2">
+                                                <Building2 className="w-3.5 h-3.5 text-zinc-500" />
+                                                {t.gyms?.name || 'Bilinmiyor'}
+                                            </div>
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 text-zinc-400 text-xs">
                                         {format(new Date(t.created_at), 'dd MMM yyyy, HH:mm', { locale: tr })}
                                     </td>
@@ -307,8 +349,9 @@ export default function RevenuePage() {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
-                                        Henüz işlem kaydı bulunmuyor.
+                                    <td colSpan={selectedGymId ? 4 : 5} className="px-6 py-12 text-center text-zinc-500">
+                                        <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                        {selectedGymId ? 'Bu salonda işlem kaydı yok.' : 'Henüz işlem kaydı bulunmuyor.'}
                                     </td>
                                 </tr>
                             )}

@@ -59,12 +59,12 @@ export function CommandPalette() {
     }, [isOpen, supabase]);
 
     const navigation = [
-        { title: 'DASHBOARD', icon: Activity, href: '/' },
-        { title: 'SALON AĞI', icon: Building2, href: '/gyms' },
-        { title: 'ÜYE AĞI', icon: Users, href: '/users' },
-        { title: 'GELİR AKIŞI', icon: CreditCard, href: '/revenue' },
+        { title: 'KONTROL PANELİ', icon: Activity, href: '/' },
+        { title: 'SALONLAR', icon: Building2, href: '/gyms' },
+        { title: 'ÜYELER', icon: Users, href: '/users' },
+        { title: 'GELİR', icon: CreditCard, href: '/revenue' },
         { title: 'SİSTEM SAĞLIĞI', icon: Terminal, href: '/health' },
-        { title: 'ANA AYARLAR', icon: Settings, href: '/settings' },
+        { title: 'AYARLAR', icon: Settings, href: '/settings' },
     ];
 
     const filteredGyms = gyms.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
@@ -100,7 +100,7 @@ export function CommandPalette() {
                         <Search className="w-5 h-5 text-zinc-500 mr-4" />
                         <input 
                             autoFocus
-                            placeholder="Komut veya düğüm ara... (örn: /gyms)"
+                            placeholder="Sayfa veya salon ara..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-zinc-700 font-medium"
@@ -115,7 +115,7 @@ export function CommandPalette() {
                         {/* Navigation Section */}
                         {filteredNav.length > 0 && (
                             <div className="space-y-1">
-                                <p className="px-4 py-2 text-[10px] font-black text-zinc-700 uppercase tracking-[0.3em]">Sistem Navigasyonu</p>
+                                <p className="px-4 py-2 text-[10px] font-black text-zinc-700 uppercase tracking-[0.3em]">Sayfalar</p>
                                 {filteredNav.map((item) => (
                                     <button
                                         key={item.href}
@@ -150,7 +150,7 @@ export function CommandPalette() {
                                             </div>
                                             <div className="text-left">
                                                 <span className="text-sm font-bold text-zinc-300 group-hover:text-white uppercase tracking-tight">{gym.name}</span>
-                                                <p className="text-[9px] font-mono text-zinc-700 uppercase mt-0.5">UUID::{gym.id.slice(0, 12)}</p>
+                                                <p className="text-[9px] font-mono text-zinc-700 mt-0.5">ID: {gym.id.slice(0, 8)}</p>
                                             </div>
                                         </div>
                                         <Zap className="w-4 h-4 text-orange-500/30 opacity-0 group-hover:opacity-100 transition-all" />
@@ -180,7 +180,7 @@ export function CommandPalette() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.3em]">GB_CONSOLE v2.0</span>
+                            <span className="text-[9px] font-black text-zinc-800 uppercase tracking-[0.3em]">GymBoost v0.1.3</span>
                         </div>
                     </div>
                 </motion.div>
