@@ -101,7 +101,7 @@ export default function RevenuePage() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
                         Gelir Yönetimi
                     </h1>
-                    <p className="text-sm text-zinc-400 mt-1">
+                    <p className="text-sm text-zinc-300 mt-1">
                         Tüm salonların finansal özeti
                     </p>
                 </div>
@@ -116,13 +116,13 @@ export default function RevenuePage() {
                 <Card className="p-6 bg-zinc-800/50 border-zinc-700/50 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-zinc-400">Toplam Gelir</h3>
+                            <h3 className="text-sm font-medium text-zinc-300">Toplam Gelir</h3>
                             <div className="p-2 bg-emerald-600/10 text-emerald-500 rounded-lg">
                                 <DollarSign className="w-5 h-5" />
                             </div>
                         </div>
                         <p className="text-2xl font-bold text-zinc-100">{stats.totalRevenue.toLocaleString('tr-TR')} ₺</p>
-                        <p className="text-xs text-zinc-500 mt-1">Tüm zamanlar</p>
+                        <p className="text-xs text-zinc-400 mt-1">Tüm zamanlar</p>
                     </div>
                     <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-600/5 rounded-full blur-2xl" />
                 </Card>
@@ -130,7 +130,7 @@ export default function RevenuePage() {
                 <Card className="p-6 bg-zinc-800/50 border-zinc-700/50 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-zinc-400">Bu Ay</h3>
+                            <h3 className="text-sm font-medium text-zinc-300">Bu Ay</h3>
                             <div className={cn(
                                 "p-2 rounded-lg",
                                 stats.growth >= 0 ? "bg-emerald-600/10 text-emerald-500" : "bg-red-600/10 text-red-500"
@@ -151,31 +151,31 @@ export default function RevenuePage() {
                             )}>
                                 %{Math.abs(stats.growth).toFixed(1)}
                             </span>
-                            <span className="text-xs text-zinc-500 ml-1">geçen aya göre</span>
+                            <span className="text-xs text-zinc-400 ml-1">geçen aya göre</span>
                         </div>
                     </div>
                 </Card>
 
                 <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-medium text-zinc-400">Ortalama İşlem</h3>
+                        <h3 className="text-sm font-medium text-zinc-300">Ortalama İşlem</h3>
                         <div className="p-2 bg-blue-600/10 text-blue-500 rounded-lg">
                             <CreditCard className="w-5 h-5" />
                         </div>
                     </div>
                     <p className="text-2xl font-bold text-zinc-100">{Math.round(stats.averageOrder).toLocaleString('tr-TR')} ₺</p>
-                    <p className="text-xs text-zinc-500 mt-1">İşlem başına</p>
+                    <p className="text-xs text-zinc-400 mt-1">İşlem başına</p>
                 </Card>
 
                 <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-medium text-zinc-400">Tahmini Yıllık</h3>
+                        <h3 className="text-sm font-medium text-zinc-300">Tahmini Yıllık</h3>
                         <div className="p-2 bg-purple-600/10 text-purple-500 rounded-lg">
                             <Wallet className="w-5 h-5" />
                         </div>
                     </div>
                     <p className="text-2xl font-bold text-zinc-100">{(stats.monthlyRevenue * 12).toLocaleString('tr-TR')} ₺</p>
-                    <p className="text-xs text-zinc-500 mt-1">Mevcut trende göre</p>
+                    <p className="text-xs text-zinc-400 mt-1">Mevcut trende göre</p>
                 </Card>
             </div>
 

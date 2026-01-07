@@ -132,7 +132,7 @@ export default function SettingsPage() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
                     Hesap Ayarları
                 </h1>
-                <p className="text-sm text-zinc-400 mt-1">
+                <p className="text-sm text-zinc-300 mt-1">
                     Profilinizi ve tercihlerinizi yönetin
                 </p>
             </div>
@@ -148,7 +148,7 @@ export default function SettingsPage() {
                                 "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all",
                                 activeTab === tab.id
                                     ? "bg-blue-600/10 text-blue-500 hover:bg-blue-600/20"
-                                    : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                                    : "text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/50"
                             )}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -175,7 +175,7 @@ export default function SettingsPage() {
                             <form onSubmit={handleSaveProfile} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-zinc-400">Ad Soyad</label>
+                                        <label className="text-sm font-medium text-zinc-300">Ad Soyad</label>
                                         <input
                                             type="text"
                                             value={profile.fullName}
@@ -185,16 +185,16 @@ export default function SettingsPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-zinc-400">E-posta</label>
+                                        <label className="text-sm font-medium text-zinc-300">E-posta</label>
                                         <input
                                             type="email"
                                             value={profile.email}
                                             disabled
-                                            className="w-full h-10 bg-zinc-900/50 border border-zinc-700/50 rounded-lg px-3 text-sm text-zinc-500 cursor-not-allowed"
+                                            className="w-full h-10 bg-zinc-900/50 border border-zinc-700/50 rounded-lg px-3 text-sm text-zinc-400 cursor-not-allowed"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-zinc-400">Dil</label>
+                                        <label className="text-sm font-medium text-zinc-300">Dil</label>
                                         <select
                                             value={profile.language}
                                             onChange={(e) => setProfile({ ...profile, language: e.target.value })}
@@ -205,7 +205,7 @@ export default function SettingsPage() {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-zinc-400">Tema</label>
+                                        <label className="text-sm font-medium text-zinc-300">Tema</label>
                                         <select
                                             value={profile.theme}
                                             onChange={(e) => setProfile({ ...profile, theme: e.target.value })}
@@ -238,7 +238,7 @@ export default function SettingsPage() {
                                         </div>
                                         <div>
                                             <h3 className="text-sm font-bold text-zinc-100">İki Adımlı Doğrulama</h3>
-                                            <p className="text-xs text-zinc-400 mt-1">
+                                            <p className="text-xs text-zinc-300 mt-1">
                                                 Güvenliğiniz için, şifre değiştirme işlemine başlamadan önce kayıtlı e-posta adresinize ({profile.email}) bir doğrulama kodu göndereceğiz.
                                             </p>
                                         </div>
@@ -257,15 +257,15 @@ export default function SettingsPage() {
                                 <form onSubmit={handleUpdatePassword} className="space-y-6">
                                     <div className="space-y-4 max-w-md mx-auto">
                                         <div className="text-center mb-6">
-                                            <div className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-400">
+                                            <div className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-300">
                                                 <Mail className="w-6 h-6" />
                                             </div>
                                             <h3 className="text-zinc-100 font-medium">E-postanı Kontrol Et</h3>
-                                            <p className="text-xs text-zinc-500 mt-1">Gelen 6 haneli kodu giriniz.</p>
+                                            <p className="text-xs text-zinc-300 mt-1">Gelen 6 haneli kodu giriniz.</p>
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-400">Doğrulama Kodu</label>
+                                            <label className="text-sm font-medium text-zinc-300">Doğrulama Kodu</label>
                                             <input
                                                 type="text"
                                                 value={security.otpCode}
@@ -279,7 +279,7 @@ export default function SettingsPage() {
                                         <div className="h-[1px] bg-zinc-800 my-4" />
 
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-400">Yeni Şifre</label>
+                                            <label className="text-sm font-medium text-zinc-300">Yeni Şifre</label>
                                             <input
                                                 type="password"
                                                 value={security.newPassword}
@@ -288,7 +288,7 @@ export default function SettingsPage() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-400">Yeni Şifre (Tekrar)</label>
+                                            <label className="text-sm font-medium text-zinc-300">Yeni Şifre (Tekrar)</label>
                                             <input
                                                 type="password"
                                                 value={security.confirmPassword}
@@ -302,7 +302,7 @@ export default function SettingsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setStep('request')}
-                                            className="text-xs text-zinc-500 hover:text-zinc-300"
+                                            className="text-xs text-zinc-400 hover:text-zinc-300"
                                         >
                                             Geri Dön
                                         </button>
@@ -312,7 +312,7 @@ export default function SettingsPage() {
                                     </div>
 
                                     {timeLeft > 0 && (
-                                        <p className="text-center text-xs text-zinc-600 mt-2">
+                                        <p className="text-center text-xs text-zinc-400 mt-2">
                                             Yeni kod için: {timeLeft}sn
                                         </p>
                                     )}

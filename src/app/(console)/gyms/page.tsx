@@ -153,7 +153,7 @@ export default function SuperAdminGyms() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
                         Salonlar
                     </h1>
-                    <p className="text-sm text-zinc-400 mt-1">
+                    <p className="text-sm text-zinc-300 mt-1">
                         Toplam {gyms.length} salon
                     </p>
                 </div>
@@ -178,12 +178,12 @@ export default function SuperAdminGyms() {
 
             {/* Search */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
                 <input
                     placeholder="Salon ara..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                 />
             </div>
 
@@ -213,7 +213,7 @@ export default function SuperAdminGyms() {
                                             )}>
                                                 {isArchived ? 'Arşivlendi' : gym.settings?.is_activated ? 'Aktif' : 'Beklemede'}
                                             </span>
-                                            <span className="text-xs text-zinc-400">
+                                            <span className="text-xs text-zinc-300">
                                                 {memberCounts[gym.id] ?? 0} üye
                                             </span>
                                         </div>
@@ -299,7 +299,7 @@ export default function SuperAdminGyms() {
                             <form onSubmit={handleSave} className="space-y-4">
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="text-sm font-medium text-zinc-300 mb-2 block">Salon Adı</label>
+                                        <label className="text-sm font-medium text-zinc-200 mb-2 block">Salon Adı</label>
                                         <input
                                             value={form.name}
                                             onChange={e => setForm({ ...form, name: e.target.value })}
@@ -309,7 +309,7 @@ export default function SuperAdminGyms() {
                                     </div>
 
                                     <div>
-                                        <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                                        <label className="text-sm font-medium text-zinc-200 mb-2 block">
                                             Ödeme Bildirim E-postası
                                             <span className="text-zinc-500 text-xs font-normal ml-2">(Opsiyonel)</span>
                                         </label>
@@ -320,7 +320,7 @@ export default function SuperAdminGyms() {
                                             className="w-full h-11 bg-zinc-900 border border-zinc-700 rounded-lg px-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                                             placeholder="odeme@salon.com"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Stripe ödemelerinde bu adrese bilgi gider.</p>
+                                        <p className="text-[11px] text-zinc-400 mt-1">Stripe ödemelerinde bu adrese bilgi gider.</p>
                                     </div>
                                 </div>
 

@@ -92,7 +92,7 @@ export default function InventoryPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
                         Envanter Yönetimi
                     </h1>
-                    <p className="text-sm text-zinc-400 mt-1">
+                    <p className="text-sm text-zinc-300 mt-1">
                         Küresel stok ve ürün takibi
                     </p>
                 </div>
@@ -116,7 +116,7 @@ export default function InventoryPage() {
                             <Package className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-zinc-400">Toplam Ürün</p>
+                            <p className="text-sm font-medium text-zinc-300">Toplam Ürün</p>
                             <p className="text-xl font-bold text-zinc-100">{stats.totalItems}</p>
                         </div>
                     </div>
@@ -128,7 +128,7 @@ export default function InventoryPage() {
                             <AlertTriangle className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-zinc-400">Kritik Stok</p>
+                            <p className="text-sm font-medium text-zinc-300">Kritik Stok</p>
                             <p className="text-xl font-bold text-zinc-100">{stats.lowStock}</p>
                         </div>
                     </div>
@@ -140,7 +140,7 @@ export default function InventoryPage() {
                             <Tag className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-zinc-400">Stok Yok</p>
+                            <p className="text-sm font-medium text-zinc-300">Stok Yok</p>
                             <p className="text-xl font-bold text-zinc-100">{stats.outOfStock}</p>
                         </div>
                     </div>
@@ -152,7 +152,7 @@ export default function InventoryPage() {
                             <Tag className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-zinc-400">Envanter Değeri</p>
+                            <p className="text-sm font-medium text-zinc-300">Envanter Değeri</p>
                             <p className="text-xl font-bold text-zinc-100">{stats.totalValue.toLocaleString('tr-TR')} ₺</p>
                         </div>
                     </div>
@@ -167,7 +167,7 @@ export default function InventoryPage() {
                         placeholder="Ürün adı, kategori veya salon ara..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                     />
                 </div>
 
@@ -189,17 +189,17 @@ export default function InventoryPage() {
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-zinc-200">{product.name}</div>
                                         {product.description && (
-                                            <div className="text-xs text-zinc-500 truncate max-w-[200px]">{product.description}</div>
+                                            <div className="text-xs text-zinc-400 truncate max-w-[200px]">{product.description}</div>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-zinc-400 text-xs">
+                                    <td className="px-6 py-4 text-zinc-300 text-xs">
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                                             {product.gyms?.name || 'Genel'}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="px-2 py-1 rounded-md bg-zinc-700/50 text-zinc-400 text-xs border border-zinc-700">
+                                        <span className="px-2 py-1 rounded-md bg-zinc-700/50 text-zinc-300 text-xs border border-zinc-700">
                                             {product.category || 'Genel'}
                                         </span>
                                     </td>
