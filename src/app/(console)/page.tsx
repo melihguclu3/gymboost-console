@@ -341,8 +341,8 @@ export default function SuperAdminPage() {
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <div className="w-8 h-8 border-2 border-zinc-300 border-t-blue-600 rounded-full animate-spin" />
-                <p className="text-sm text-zinc-500">Yükleniyor...</p>
+                <div className="w-8 h-8 border-2 border-zinc-600 border-t-blue-500 rounded-full animate-spin" />
+                <p className="text-sm text-zinc-300">Yükleniyor...</p>
             </div>
         );
     }
@@ -355,17 +355,17 @@ export default function SuperAdminPage() {
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
                             Kontrol Paneli
                         </h1>
-                        <p className="text-sm text-zinc-500 mt-1">
+                        <p className="text-sm text-zinc-400 mt-1">
                             Tüm salonların merkezi yönetimi
                         </p>
                     </div>
                     <Button
                         onClick={() => setIsAnnouncementOpen(true)}
                         variant="primary"
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium"
                     >
                         <Bell className="w-4 h-4 mr-2" />
                         Duyuru Gönder
@@ -373,26 +373,26 @@ export default function SuperAdminPage() {
                 </div>
 
                 {/* System Info Bar */}
-                <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
                     <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                         <span>Sistem Aktif</span>
                     </div>
-                    <span className="text-zinc-300">•</span>
+                    <span className="text-zinc-600">•</span>
                     <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" />
                         <span>{currentTime.toLocaleTimeString('tr-TR')}</span>
                     </div>
-                    <span className="text-zinc-300">•</span>
+                    <span className="text-zinc-600">•</span>
                     <div className="flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5" />
                         <span>{coords.lat}°N, {coords.lon}°E</span>
                     </div>
-                    <span className="text-zinc-300 hidden sm:inline">•</span>
+                    <span className="text-zinc-600 hidden sm:inline">•</span>
                     <div className="hidden sm:flex items-center gap-1.5">
                         <span>Gecikme: {currentLatency}ms</span>
                     </div>
-                    <span className="text-zinc-300 hidden sm:inline">•</span>
+                    <span className="text-zinc-600 hidden sm:inline">•</span>
                     <div className="hidden sm:flex items-center gap-1.5">
                         <span>Uptime: {uptime}%</span>
                     </div>
@@ -402,55 +402,55 @@ export default function SuperAdminPage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Revenue */}
-                <Card className="p-5">
+                <Card className="p-5 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between mb-3">
-                        <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                            <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-500" />
+                        <div className="p-2 bg-green-600 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-white" />
                         </div>
                         <div className={cn(
-                            "text-xs font-medium px-2 py-1 rounded",
+                            "text-xs font-semibold px-2 py-1 rounded",
                             stats.revenueChange >= 0
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400"
-                                : "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                                ? "bg-green-600 text-white"
+                                : "bg-red-600 text-white"
                         )}>
                             {stats.revenueChange >= 0 ? '+' : ''}{stats.revenueChange}%
                         </div>
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    <p className="text-2xl font-bold text-zinc-100">
                         {stats.totalRevenue.toLocaleString()} ₺
                     </p>
-                    <p className="text-sm text-zinc-500 mt-1">Bu Ay Gelir</p>
+                    <p className="text-sm text-zinc-400 mt-1">Bu Ay Gelir</p>
                 </Card>
 
                 {/* Gyms */}
-                <Card className="p-5">
+                <Card className="p-5 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between mb-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                            <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+                        <div className="p-2 bg-blue-600 rounded-lg">
+                            <Building2 className="w-5 h-5 text-white" />
                         </div>
                         {stats.trialGyms > 0 && (
-                            <div className="text-xs font-medium px-2 py-1 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400">
+                            <div className="text-xs font-semibold px-2 py-1 rounded bg-orange-600 text-white">
                                 {stats.trialGyms} deneme
                             </div>
                         )}
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    <p className="text-2xl font-bold text-zinc-100">
                         {stats.totalGyms}
                     </p>
-                    <p className="text-sm text-zinc-500 mt-1">Aktif Salon</p>
+                    <p className="text-sm text-zinc-400 mt-1">Aktif Salon</p>
                 </Card>
 
                 {/* Members */}
-                <Card className="p-5">
+                <Card className="p-5 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between mb-3">
-                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                            <Users className="w-5 h-5 text-purple-600 dark:text-purple-500" />
+                        <div className="p-2 bg-purple-600 rounded-lg">
+                            <Users className="w-5 h-5 text-white" />
                         </div>
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    <p className="text-2xl font-bold text-zinc-100">
                         {stats.activeMembers.toLocaleString()}
                     </p>
-                    <p className="text-sm text-zinc-500 mt-1">Toplam Üye</p>
+                    <p className="text-sm text-zinc-400 mt-1">Toplam Üye</p>
                     {/* Mini Chart */}
                     <div className="flex items-end gap-1 h-8 mt-3">
                         {stats.last10DaysCheckIns.map((count, i) => {
@@ -460,7 +460,7 @@ export default function SuperAdminPage() {
                                 <div
                                     key={i}
                                     style={{ height: `${height}%` }}
-                                    className="flex-1 bg-purple-200 dark:bg-purple-900/40 rounded-sm min-h-[2px]"
+                                    className="flex-1 bg-purple-500 rounded-sm min-h-[2px]"
                                 />
                             );
                         })}
@@ -468,18 +468,18 @@ export default function SuperAdminPage() {
                 </Card>
 
                 {/* Check-ins */}
-                <Card className="p-5">
+                <Card className="p-5 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between mb-3">
-                        <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
-                            <Activity className="w-5 h-5 text-cyan-600 dark:text-cyan-500" />
+                        <div className="p-2 bg-cyan-600 rounded-lg">
+                            <Activity className="w-5 h-5 text-white" />
                         </div>
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    <p className="text-2xl font-bold text-zinc-100">
                         {stats.todayCheckIns}
                     </p>
-                    <p className="text-sm text-zinc-500 mt-1">Bugünkü Giriş</p>
+                    <p className="text-sm text-zinc-400 mt-1">Bugünkü Giriş</p>
                     {/* Progress Bar */}
-                    <div className="mt-3 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="mt-3 h-2 bg-zinc-700 rounded-full overflow-hidden">
                         <div
                             style={{ width: `${todayProgressPercent}%` }}
                             className="h-full bg-cyan-500 transition-all duration-500"
@@ -493,16 +493,16 @@ export default function SuperAdminPage() {
             {(stats.lowStockAlerts > 0 || stats.healthWarnings > 0) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {stats.lowStockAlerts > 0 && (
-                        <Card className="p-4 border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/10">
+                        <Card className="p-4 border-orange-600/50 bg-orange-600/10">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                                    <Package className="w-5 h-5 text-orange-600 dark:text-orange-500" />
+                                <div className="p-2 bg-orange-600 rounded-lg">
+                                    <Package className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-zinc-900 dark:text-white">
+                                    <p className="font-semibold text-zinc-100">
                                         {stats.lowStockAlerts} Stok Uyarısı
                                     </p>
-                                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    <p className="text-sm text-zinc-300">
                                         Kritik stok seviyesi
                                     </p>
                                 </div>
@@ -511,16 +511,16 @@ export default function SuperAdminPage() {
                     )}
 
                     {stats.healthWarnings > 0 && (
-                        <Card className="p-4 border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10">
+                        <Card className="p-4 border-red-600/50 bg-red-600/10">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                                    <HeartPulse className="w-5 h-5 text-red-600 dark:text-red-500" />
+                                <div className="p-2 bg-red-600 rounded-lg">
+                                    <HeartPulse className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-zinc-900 dark:text-white">
+                                    <p className="font-semibold text-zinc-100">
                                         {stats.healthWarnings} Sağlık Notu
                                     </p>
-                                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    <p className="text-sm text-zinc-300">
                                         Dikkat gerektiren üyeler
                                     </p>
                                 </div>
@@ -532,61 +532,61 @@ export default function SuperAdminPage() {
 
             {/* System Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="p-4">
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-zinc-500 mb-1">Bölge</p>
-                            <p className="font-semibold text-zinc-900 dark:text-white">
+                            <p className="text-xs text-zinc-400 mb-1">Bölge</p>
+                            <p className="font-semibold text-zinc-100">
                                 {vercelInfo.region}
                             </p>
                         </div>
-                        <Server className="w-5 h-5 text-zinc-400" />
+                        <Server className="w-5 h-5 text-zinc-500" />
                     </div>
                 </Card>
 
-                <Card className="p-4">
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-zinc-500 mb-1">Sürüm</p>
-                            <p className="font-semibold text-zinc-900 dark:text-white font-mono">
+                            <p className="text-xs text-zinc-400 mb-1">Sürüm</p>
+                            <p className="font-semibold text-zinc-100 font-mono text-sm">
                                 {vercelInfo.version}
                             </p>
                         </div>
-                        <Database className="w-5 h-5 text-zinc-400" />
+                        <Database className="w-5 h-5 text-zinc-500" />
                     </div>
                 </Card>
 
-                <Card className="p-4">
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-zinc-500 mb-1">RAM Kullanımı</p>
-                            <p className="font-semibold text-zinc-900 dark:text-white">
+                            <p className="text-xs text-zinc-400 mb-1">RAM Kullanımı</p>
+                            <p className="font-semibold text-zinc-100">
                                 {sysMetrics.ram}%
                             </p>
                         </div>
-                        <Activity className="w-5 h-5 text-zinc-400" />
+                        <Activity className="w-5 h-5 text-zinc-500" />
                     </div>
                 </Card>
             </div>
 
             {/* Live Logs */}
             {realtimeLogs.length > 0 && (
-                <Card className="p-5">
+                <Card className="p-5 bg-zinc-800/50 border-zinc-700/50">
                     <div className="flex items-center gap-2 mb-4">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <h3 className="font-semibold text-zinc-900 dark:text-white">
+                        <h3 className="font-semibold text-zinc-100">
                             Canlı Sistem Logları
                         </h3>
                     </div>
                     <div className="space-y-2 font-mono text-xs">
                         {realtimeLogs.map((log, i) => (
-                            <div key={i} className="flex items-start gap-3 text-zinc-600 dark:text-zinc-400">
-                                <span className="text-zinc-400 dark:text-zinc-600 shrink-0">
+                            <div key={i} className="flex items-start gap-3 text-zinc-300">
+                                <span className="text-zinc-500 shrink-0">
                                     {new Date(log.created_at).toLocaleTimeString('tr-TR')}
                                 </span>
                                 <span className={cn(
                                     "font-semibold shrink-0",
-                                    log.event_type?.includes('error') ? 'text-red-500' : 'text-green-500'
+                                    log.event_type?.includes('error') ? 'text-red-400' : 'text-green-400'
                                 )}>
                                     [{log.event_type?.toUpperCase()}]
                                 </span>
@@ -600,7 +600,7 @@ export default function SuperAdminPage() {
             {/* Gyms List */}
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                    <h2 className="text-xl font-bold text-zinc-100">
                         Salonlar ({filteredGyms.length})
                     </h2>
                     <div className="relative">
@@ -610,7 +610,7 @@ export default function SuperAdminPage() {
                             placeholder="Salon ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full sm:w-64 pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                         />
                     </div>
                 </div>
@@ -624,35 +624,30 @@ export default function SuperAdminPage() {
                             <Card
                                 key={gym.id}
                                 onClick={() => router.push(`/gyms/${gym.id}`)}
-                                className="p-4 hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer"
+                                className="p-4 bg-zinc-800/50 border-zinc-700/50 hover:border-blue-500 hover:bg-zinc-800 transition-colors cursor-pointer"
                             >
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className={cn(
                                             "p-2 rounded-lg shrink-0",
                                             isActive
-                                                ? "bg-green-100 dark:bg-green-900/20"
-                                                : "bg-orange-100 dark:bg-orange-900/20"
+                                                ? "bg-green-600"
+                                                : "bg-orange-600"
                                         )}>
-                                            <Building2 className={cn(
-                                                "w-5 h-5",
-                                                isActive
-                                                    ? "text-green-600 dark:text-green-500"
-                                                    : "text-orange-600 dark:text-orange-500"
-                                            )} />
+                                            <Building2 className="w-5 h-5 text-white" />
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-zinc-900 dark:text-white truncate">
+                                                <h3 className="font-semibold text-zinc-100 truncate">
                                                     {gym.name}
                                                 </h3>
                                                 {!isActive && (
-                                                    <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 rounded">
+                                                    <span className="text-xs px-2 py-0.5 bg-orange-600 text-white rounded font-medium">
                                                         Deneme
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
+                                            <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
                                                 <span className="font-mono">
                                                     {gym.id.slice(0, 8)}
                                                 </span>
@@ -663,7 +658,7 @@ export default function SuperAdminPage() {
                                             </div>
                                         </div>
                                     </div>
-                                    <ChevronRight className="w-5 h-5 text-zinc-400 shrink-0" />
+                                    <ChevronRight className="w-5 h-5 text-zinc-500 shrink-0" />
                                 </div>
                             </Card>
                         );
@@ -680,34 +675,34 @@ export default function SuperAdminPage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsAnnouncementOpen(false)}
-                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
                         />
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl p-6 relative z-10 shadow-xl"
+                            className="w-full max-w-md bg-zinc-800 border border-zinc-700 rounded-2xl p-6 relative z-10 shadow-2xl"
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                                        <Bell className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+                                    <div className="p-2 bg-blue-600 rounded-lg">
+                                        <Bell className="w-5 h-5 text-white" />
                                     </div>
-                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+                                    <h2 className="text-lg font-bold text-zinc-100">
                                         Duyuru Gönder
                                     </h2>
                                 </div>
                                 <button
                                     onClick={() => setIsAnnouncementOpen(false)}
-                                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                    className="p-1 hover:bg-zinc-700 rounded-lg transition-colors"
                                 >
-                                    <X className="w-5 h-5 text-zinc-500" />
+                                    <X className="w-5 h-5 text-zinc-400" />
                                 </button>
                             </div>
 
                             <form onSubmit={handleSendAnnouncement} className="space-y-4">
                                 <div>
-                                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 block">
+                                    <label className="text-sm font-medium text-zinc-300 mb-2 block">
                                         Mesaj
                                     </label>
                                     <textarea
@@ -715,12 +710,12 @@ export default function SuperAdminPage() {
                                         value={announcementMsg}
                                         onChange={(e) => setAnnouncementMsg(e.target.value)}
                                         placeholder="Tüm salonlara gönderilecek mesajı yazın..."
-                                        className="w-full h-32 px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        className="w-full h-32 px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none"
                                     />
                                 </div>
 
-                                <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-lg">
-                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                                <div className="p-3 bg-blue-600/10 border border-blue-600/30 rounded-lg">
+                                    <p className="text-xs text-zinc-300">
                                         Bu mesaj tüm salon yöneticilerine bildirim olarak gönderilecektir.
                                     </p>
                                 </div>
@@ -730,7 +725,7 @@ export default function SuperAdminPage() {
                                         type="button"
                                         onClick={() => setIsAnnouncementOpen(false)}
                                         variant="secondary"
-                                        className="flex-1"
+                                        className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
                                     >
                                         İptal
                                     </Button>
@@ -738,7 +733,7 @@ export default function SuperAdminPage() {
                                         type="submit"
                                         variant="primary"
                                         isLoading={announcementLoading}
-                                        className="flex-1"
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                                     >
                                         Gönder
                                     </Button>
