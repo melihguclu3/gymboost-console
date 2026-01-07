@@ -101,10 +101,6 @@ export default function InventoryPage() {
                         <Filter className="w-4 h-4 mr-2" />
                         Filtrele
                     </Button>
-                    <Button variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Yeni Ürün
-                    </Button>
                 </div>
             </div>
 
