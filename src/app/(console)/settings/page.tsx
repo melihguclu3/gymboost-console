@@ -74,6 +74,17 @@ export default function SettingsPage() {
                 createdAt: user.created_at || '',
                 lastSignIn: user.last_sign_in_at || ''
             });
+
+            // Load notification preferences from user_metadata
+            const prefs = user.user_metadata?.preferences?.notifications;
+            if (prefs) {
+                setNotifications({
+                    newGymSignup: prefs.newGymSignup ?? true,
+                    criticalErrors: prefs.criticalErrors ?? true,
+                    weeklyReport: prefs.weeklyReport ?? false,
+                    paymentAlerts: prefs.paymentAlerts ?? true
+                });
+            }
         }
     }, [supabase]);
 
@@ -183,10 +194,21 @@ export default function SettingsPage() {
 
     const handleSaveNotifications = async () => {
         setLoading(true);
-        // In real app, save to database
-        await new Promise(r => setTimeout(r, 500));
-        toast.success('Bildirim tercihleri kaydedildi');
-        setLoading(false);
+        try {
+            const { error } = await supabase.auth.updateUser({
+                data: {
+                    preferences: {
+                        notifications: notifications
+                    }
+                }
+            });
+            if (error) throw error;
+            toast.success('Bildirim tercihleri kaydedildi');
+        } catch (error: any) {
+            toast.error('Hata: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSignOut = async () => {

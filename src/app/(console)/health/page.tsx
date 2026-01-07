@@ -16,12 +16,15 @@ import {
     Network,
     Globe,
     ShieldCheck,
-    ChevronRight
+    ChevronRight,
+    Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn, maskEmail } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
+import { AIAnalysisModal } from '@/components/AIAnalysisModal';
+import { AIAnalysisResponse } from '@/types';
 
 interface SystemLog {
     id: string;
@@ -36,6 +39,9 @@ export default function SystemHealthPage() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [logs, setLogs] = useState<SystemLog[]>([]);
     const [uptime, setUptime] = useState(100);
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const [aiLoading, setAILoading] = useState(false);
+    const [aiAnalysis, setAIAnalysis] = useState<AIAnalysisResponse | null>(null);
     const [healthMetrics, setHealthMetrics] = useState({
         dbResponseTime: 0,
         dbStatus: 'SCANNING',
@@ -174,6 +180,38 @@ export default function SystemHealthPage() {
         }
     }, [supabase, calculateUptime, loadStabilityData, loadRecentLogs]);
 
+    const handleHealthAnalysis = async () => {
+        setIsAIModalOpen(true);
+        setAILoading(true);
+        setAIAnalysis(null);
+
+        try {
+            const response = await fetch('/api/ai/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'health',
+                    data: {
+                        uptime: uptime,
+                        dbStatus: healthMetrics.dbStatus,
+                        dbResponseTime: healthMetrics.dbResponseTime,
+                        authStatus: healthMetrics.authStatus,
+                        storageStatus: healthMetrics.storageStatus,
+                        latencyHistory: responseHistory,
+                        externalApis: externalApis,
+                        memoryUsage: systemMetrics.memoryPercent
+                    }
+                })
+            });
+            const data = await response.json();
+            setAIAnalysis(data);
+        } catch (error) {
+            setAIAnalysis({ success: false, analysis: '', insights: [], recommendations: [], error: 'Bağlantı hatası' });
+        } finally {
+            setAILoading(false);
+        }
+    };
+
     useEffect(() => {
         checkHealth();
         const interval = setInterval(checkHealth, 30000);
@@ -220,14 +258,24 @@ export default function SystemHealthPage() {
                         </span>
                     </div>
                 </div>
-                <Button
-                    onClick={checkHealth}
-                    variant="secondary"
-                    className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
-                >
-                    <RefreshCcw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-                    Yeniden Tara
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={handleHealthAnalysis}
+                        variant="secondary"
+                        className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 text-zinc-300 border-purple-500/30"
+                    >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        AI Analiz
+                    </Button>
+                    <Button
+                        onClick={checkHealth}
+                        variant="secondary"
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                    >
+                        <RefreshCcw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
+                        Yeniden Tara
+                    </Button>
+                </div>
             </div>
 
             {/* Status Grid */}
@@ -480,6 +528,15 @@ export default function SystemHealthPage() {
                     </div>
                 </Card>
             </div>
+
+            {/* AI Analysis Modal */}
+            <AIAnalysisModal
+                isOpen={isAIModalOpen}
+                onClose={() => setIsAIModalOpen(false)}
+                title="Sistem Sağlığı Analizi"
+                isLoading={aiLoading}
+                data={aiAnalysis}
+            />
         </div>
     );
 }

@@ -30,6 +30,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import Link from 'next/link';
+import { AIAnalysisModal } from '@/components/AIAnalysisModal';
+import { AIAnalysisResponse } from '@/types';
 
 export default function SuperAdminPage() {
     const router = useRouter();
@@ -41,6 +43,10 @@ export default function SuperAdminPage() {
     const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
     const [announcementMsg, setAnnouncementMsg] = useState('');
     const [announcementLoading, setAnnouncementLoading] = useState(false);
+
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const [aiLoading, setAILoading] = useState(false);
+    const [aiAnalysis, setAIAnalysis] = useState<AIAnalysisResponse | null>(null);
 
     const [stats, setStats] = useState({
         totalGyms: 0,
@@ -172,6 +178,40 @@ export default function SuperAdminPage() {
         };
     }, [loadData, supabase]);
 
+    const handlePlatformAnalysis = async () => {
+        setIsAIModalOpen(true);
+        setAILoading(true);
+        setAIAnalysis(null);
+
+        try {
+            const response = await fetch('/api/ai/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'platform',
+                    data: {
+                        totalGyms: stats.totalGyms,
+                        activeMembers: stats.activeMembers,
+                        totalRevenue: stats.totalRevenue,
+                        revenueChange: stats.revenueChange,
+                        todayCheckIns: stats.todayCheckIns,
+                        alerts: {
+                            lowStock: stats.lowStockAlerts,
+                            expiring: stats.expiringMemberships,
+                            pending: stats.pendingMembers
+                        }
+                    }
+                })
+            });
+            const data = await response.json();
+            setAIAnalysis(data);
+        } catch (error) {
+            setAIAnalysis({ success: false, analysis: '', insights: [], recommendations: [], error: 'Bağlantı hatası' });
+        } finally {
+            setAILoading(false);
+        }
+    };
+
     async function handleSendAnnouncement(e: React.FormEvent) {
         e.preventDefault();
         if (!announcementMsg.trim()) return;
@@ -246,6 +286,14 @@ export default function SuperAdminPage() {
                         className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 h-9 w-9 p-0"
                     >
                         <RefreshCcw className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        onClick={handlePlatformAnalysis}
+                        variant="secondary"
+                        className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 text-zinc-300 border-purple-500/30 h-9"
+                    >
+                        <Sparkles className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">AI Analiz</span>
                     </Button>
                     <Button
                         onClick={() => setIsAnnouncementOpen(true)}
@@ -566,6 +614,15 @@ export default function SuperAdminPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* AI Analysis Modal */}
+            <AIAnalysisModal
+                isOpen={isAIModalOpen}
+                onClose={() => setIsAIModalOpen(false)}
+                title="Platform Analizi"
+                isLoading={aiLoading}
+                data={aiAnalysis}
+            />
         </div>
     );
 }

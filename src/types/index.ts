@@ -467,3 +467,33 @@ export interface Announcement {
   published_at: string;
   created_at: string;
 }
+
+// =====================
+// SUPER ADMIN TYPES
+// =====================
+
+// Super Admin Preferences (stored in user_metadata)
+export interface SuperAdminPreferences {
+  notifications: {
+    newGymSignup: boolean;
+    criticalErrors: boolean;
+    weeklyReport: boolean;
+    paymentAlerts: boolean;
+  };
+}
+
+// AI Analysis Types
+export type AIAnalysisType = 'platform' | 'health';
+
+export interface AIAnalysisRequest {
+  type: AIAnalysisType;
+  data?: Record<string, unknown>;
+}
+
+export interface AIAnalysisResponse {
+  success: boolean;
+  analysis: string;
+  insights: string[];
+  recommendations: string[];
+  error?: string;
+}
