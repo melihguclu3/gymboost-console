@@ -214,7 +214,7 @@ export default function InventoryPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 font-mono text-zinc-300">
-                                        {product.price.toLocaleString('tr-TR')} ₺
+                                        {(product.price || 0).toLocaleString('tr-TR')} ₺
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
