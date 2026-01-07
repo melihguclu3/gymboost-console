@@ -14,18 +14,11 @@ import {
     Menu,
     X,
     Activity,
-    Bell,
-    ChevronRight,
-    Terminal,
-    Search,
-    ShieldCheck,
-    Command,
     Package
 } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { CommandPalette } from '@/components/CommandPalette';
 import { SystemHeartbeatSplash } from '@/components/SystemHeartbeatSplash';
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
@@ -34,18 +27,6 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     const [isLoading, setIsLoading] = useState(true);
     const [adminName, setAdminName] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [showContent, setShowContent] = useState(false);
-
-    // Animasyon süresiyle senkronize et (SystemHeartbeatSplash 4.5s sürüyor)
-    useEffect(() => {
-        const hasSeenSplash = sessionStorage.getItem('has_seen_console_splash');
-        if (hasSeenSplash) {
-            setShowContent(true);
-        } else {
-            const timer = setTimeout(() => setShowContent(true), 4200);
-            return () => clearTimeout(timer);
-        }
-    }, []);
 
     const checkAuth = useCallback(async () => {
         const supabase = createClient();
@@ -83,40 +64,42 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
     }, [checkAuth]);
 
     const menuItems = [
-        { title: 'KONTROL PANELİ', icon: LayoutDashboard, href: '/' },
-        { title: 'SALON AĞI', icon: Building2, href: '/gyms' },
-        { title: 'ÜYE YÖNETİMİ', icon: Users, href: '/users' },
-        { title: 'ENVANTER DENETİMİ', icon: Package, href: '/inventory' },
-        { title: 'GELİR AKIŞI', icon: CreditCard, href: '/revenue' },
-        { title: 'SİSTEM SAĞLIĞI', icon: Activity, href: '/health' },
-        { title: 'ANA AYARLAR', icon: Settings, href: '/settings' },
+        { title: 'Kontrol Paneli', icon: LayoutDashboard, href: '/' },
+        { title: 'Salonlar', icon: Building2, href: '/gyms' },
+        { title: 'Üyeler', icon: Users, href: '/users' },
+        { title: 'Envanter', icon: Package, href: '/inventory' },
+        { title: 'Gelir', icon: CreditCard, href: '/revenue' },
+        { title: 'Sistem Sağlığı', icon: Activity, href: '/health' },
+        { title: 'Ayarlar', icon: Settings, href: '/settings' },
     ];
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-white/10 border-t-orange-500 rounded-full animate-spin" />
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-zinc-700 border-t-blue-600 rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black flex text-zinc-100 font-sans selection:bg-orange-500/20 overflow-hidden">
-            {/* --- SIDEBAR --- */}
-            <aside className="w-72 border-r border-white/[0.04] flex flex-col shrink-0 bg-[#020202] hidden lg:flex sticky top-0 h-screen">
-                <div className="p-10 pb-12">
-                    <div className="flex items-center gap-4 group cursor-pointer">
-                        <div className="p-2.5 bg-orange-500 rounded-xl shadow-[0_0_20px_rgba(249,115,22,0.3)] group-hover:scale-110 transition-transform duration-500">
-                            <Command className="w-5 h-5 text-white" />
+        <div className="min-h-screen bg-zinc-950 flex">
+            {/* Sidebar - Desktop */}
+            <aside className="w-64 border-r border-zinc-800 flex-col shrink-0 bg-zinc-900 hidden lg:flex h-screen sticky top-0">
+                {/* Logo */}
+                <div className="p-6 border-b border-zinc-800">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-600 rounded-lg">
+                            <Building2 className="w-5 h-5 text-white" />
                         </div>
                         <div>
                             <Logo className="h-5" />
-                            <p className="text-[9px] font-mono font-black text-zinc-700 uppercase tracking-[0.3em] mt-1.5">Konsol v2.4.0</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">Console v2.4</p>
                         </div>
                     </div>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1.5">
+                {/* Navigation */}
+                <nav className="flex-1 p-4 space-y-1">
                     {menuItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
@@ -124,36 +107,28 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    "flex items-center gap-4 px-5 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden",
-                                    isActive 
-                                        ? "bg-orange-500/[0.03] text-white" 
-                                        : "text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.02]"
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium text-sm",
+                                    isActive
+                                        ? "bg-blue-600 text-white"
+                                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                                 )}
                             >
-                                <item.icon className={cn("w-4 h-4 transition-colors", isActive ? "text-orange-500" : "group-hover:text-zinc-400")} />
-                                <span className="text-[11px] font-black tracking-widest uppercase">{item.title}</span>
-                                {isActive && (
-                                    <>
-                                        <div className="absolute left-0 w-[2px] h-5 bg-orange-500 rounded-r-full shadow-[0_0_10px_orange]" />
-                                        <div className="absolute right-4 w-1 h-1 rounded-full bg-orange-500 animate-pulse" />
-                                    </>
-                                )}
+                                <item.icon className="w-5 h-5" />
+                                <span>{item.title}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
-                <div className="p-6 border-t border-white/[0.04] bg-black/20">
-                    <div className="flex items-center gap-4 px-4 py-4 bg-white/[0.02] rounded-[1.5rem] border border-white/[0.04] mb-4 group hover:border-orange-500/20 transition-all">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center text-orange-500 font-black shrink-0 shadow-xl group-hover:scale-105 transition-transform font-mono uppercase">
+                {/* User Info */}
+                <div className="p-4 border-t border-zinc-800">
+                    <div className="flex items-center gap-3 px-3 py-3 bg-zinc-800 rounded-lg mb-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
                             {adminName.charAt(0)}
                         </div>
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{adminName}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                <ShieldCheck className="w-3 h-3 text-emerald-500/70" />
-                                <p className="text-[9px] text-zinc-600 font-mono font-black uppercase tracking-widest text-[8px]">TAM YETKİ</p>
-                            </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-zinc-100 truncate">{adminName}</p>
+                            <p className="text-xs text-zinc-500">Super Admin</p>
                         </div>
                     </div>
                     <button
@@ -162,93 +137,63 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                             await supabase.auth.signOut();
                             router.push('/login');
                         }}
-                        className="flex items-center gap-3 w-full px-5 py-3.5 rounded-xl text-zinc-700 hover:text-red-400 hover:bg-red-500/[0.03] transition-all text-[9px] font-black uppercase tracking-[0.2em] group"
+                        className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-600/10 transition-all text-sm font-medium"
                     >
-                        <LogOut className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-                        OTURUMU KAPAT
+                        <LogOut className="w-4 h-4" />
+                        Çıkış Yap
                     </button>
                 </div>
             </aside>
 
-            {/* --- MAIN --- */}
-            <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto subtle-grid relative">
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none" />
-                
-                <header className="h-20 border-b border-white/[0.04] flex items-center justify-between px-6 lg:px-14 bg-black/60 backdrop-blur-xl sticky top-0 z-40">
-                    <div className="flex items-center gap-4 lg:gap-8">
-                        {/* Mobile Menu Trigger */}
-                        <button 
-                            onClick={() => setIsMobileMenuOpen(true)}
-                            className="lg:hidden p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
-                        >
-                            <Menu className="w-6 h-6" />
-                        </button>
-
-                        <div className="lg:hidden"><Logo className="h-5" /></div>
-                        <div className="hidden lg:flex items-center gap-6">
-                            <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/[0.05]">
-                                <Terminal className="w-4 h-4 text-orange-500" />
-                            </div>
-                            <nav className="flex items-center gap-4 text-[10px] font-mono font-black text-zinc-600 uppercase tracking-[0.3em]">
-                                <span className="hover:text-zinc-400 cursor-pointer transition-colors">SİSTEM</span>
-                                <ChevronRight className="w-3 h-3 text-zinc-800" />
-                                <span className="text-zinc-200 tracking-[0.2em]">{menuItems.find(m => m.href === pathname)?.title || 'ÇALIŞMA ALANI'}</span>
-                            </nav>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                        <div 
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-                            className="relative group hidden md:block cursor-pointer"
-                        >
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-hover:text-orange-500 transition-colors" />
-                            <div className="bg-white/[0.01] border border-white/[0.05] rounded-2xl pl-12 pr-4 py-2.5 text-[10px] font-black text-zinc-600 w-64 flex items-center justify-between hover:bg-white/[0.03] transition-all">
-                                <span>KOMUT ARA</span>
-                                <div className="px-1.5 py-0.5 bg-zinc-900 border border-white/10 rounded text-[9px] font-mono text-zinc-700">⌘K</div>
-                            </div>
-                        </div>
-                        
-                        <div className="h-6 w-[1px] bg-white/[0.04] mx-2 hidden lg:block" />
-
-                        <button className="relative p-3 text-zinc-600 hover:text-white rounded-xl hover:bg-white/[0.02] transition-all border border-transparent hover:border-white/[0.05] group">
-                            <Bell className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                            <span className="absolute top-3 right-3 w-1.5 h-1.5 bg-orange-500 rounded-full border-2 border-black shadow-[0_0_8px_orange]" />
-                        </button>
-                    </div>
+            {/* Main Content */}
+            <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto">
+                {/* Header - Mobile */}
+                <header className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 lg:px-8 bg-zinc-900 sticky top-0 z-40 lg:hidden">
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-all"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                    <Logo className="h-5" />
+                    <div className="w-10" /> {/* Spacer */}
                 </header>
 
-                <div className="p-6 lg:p-16 max-w-[1600px] mx-auto w-full relative z-10">
+                {/* Content */}
+                <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
                     {children}
                 </div>
-                <CommandPalette />
                 <SystemHeartbeatSplash />
             </main>
 
-            {/* --- MOBILE SIDEBAR OVERLAY --- */}
+            {/* Mobile Sidebar */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <>
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] lg:hidden"
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] lg:hidden"
                         />
-                        <motion.div 
+                        <motion.div
                             initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed inset-y-0 left-0 w-80 bg-[#020202] border-r border-white/10 z-[101] lg:hidden flex flex-col p-6"
+                            className="fixed inset-y-0 left-0 w-72 bg-zinc-900 border-r border-zinc-800 z-[101] lg:hidden flex flex-col"
                         >
-                            <div className="flex items-center justify-between mb-12 px-2">
+                            {/* Mobile Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-zinc-800">
                                 <Logo className="h-5" />
-                                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-zinc-500 hover:text-white"><X className="w-6 h-6" /></button>
+                                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-zinc-400 hover:text-white">
+                                    <X className="w-6 h-6" />
+                                </button>
                             </div>
 
-                            <nav className="flex-1 space-y-2">
+                            {/* Mobile Navigation */}
+                            <nav className="flex-1 p-4 space-y-1">
                                 {menuItems.map((item) => {
                                     const isActive = pathname === item.href;
                                     return (
@@ -257,28 +202,31 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                                             href={item.href}
                                             onClick={() => setIsMobileMenuOpen(false)}
                                             className={cn(
-                                                "flex items-center gap-4 px-5 py-4 rounded-xl transition-all",
-                                                isActive ? "bg-orange-500/10 text-white border border-orange-500/20" : "text-zinc-500 hover:bg-white/5"
+                                                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium text-sm",
+                                                isActive
+                                                    ? "bg-blue-600 text-white"
+                                                    : "text-zinc-400 hover:bg-zinc-800"
                                             )}
                                         >
-                                            <item.icon className={cn("w-5 h-5", isActive ? "text-orange-500" : "")} />
-                                            <span className="text-sm font-bold tracking-widest uppercase">{item.title}</span>
+                                            <item.icon className="w-5 h-5" />
+                                            <span>{item.title}</span>
                                         </Link>
                                     );
                                 })}
                             </nav>
 
-                            <div className="mt-auto pt-6 border-t border-white/5">
+                            {/* Mobile User Info */}
+                            <div className="p-4 border-t border-zinc-800">
                                 <button
                                     onClick={async () => {
                                         const supabase = createClient();
                                         await supabase.auth.signOut();
                                         router.push('/login');
                                     }}
-                                    className="flex items-center gap-4 w-full px-5 py-4 rounded-xl text-red-500 hover:bg-red-500/5 transition-all text-xs font-black uppercase tracking-widest"
+                                    className="flex items-center gap-2 w-full px-4 py-3 rounded-lg text-red-400 hover:bg-red-600/10 transition-all text-sm font-medium"
                                 >
                                     <LogOut className="w-5 h-5" />
-                                    OTURUMU KAPAT
+                                    Çıkış Yap
                                 </button>
                             </div>
                         </motion.div>
