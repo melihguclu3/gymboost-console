@@ -35,10 +35,12 @@ export default function RevenuePage() {
         loadData();
     }, []);
 
+    const [chartData, setChartData] = useState<{ month: string; amount: number; height: number }[]>([]);
+
     async function loadData() {
         setLoading(true);
         try {
-            // Fetch all completed payments
+            // Fetch all completed payments with basic info
             const { data, error } = await supabase
                 .from('payments')
                 .select('*, gyms(name), users(full_name)')
@@ -50,24 +52,35 @@ export default function RevenuePage() {
             if (data) {
                 setTransactions(data);
 
-                // Calculate Stats
+                // --- STATS CALCULATION ---
                 const now = new Date();
                 const currentMonth = now.getMonth();
-                const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                const currentYear = now.getFullYear();
+
+                // Last Month logic: Handle flow from Jan to Dec of prev year
+                const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastMonth = lastMonthDate.getMonth();
+                const lastMonthYear = lastMonthDate.getFullYear();
 
                 const total = data.reduce((sum, t) => sum + (t.amount || 0), 0);
 
                 const thisMonthTotal = data
-                    .filter(t => new Date(t.created_at).getMonth() === currentMonth)
+                    .filter(t => {
+                        const d = new Date(t.created_at);
+                        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                    })
                     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
                 const lastMonthTotal = data
-                    .filter(t => new Date(t.created_at).getMonth() === lastMonth)
+                    .filter(t => {
+                        const d = new Date(t.created_at);
+                        return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
+                    })
                     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
                 const growth = lastMonthTotal > 0
                     ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100
-                    : 100;
+                    : (thisMonthTotal > 0 ? 100 : 0);
 
                 setStats({
                     totalRevenue: total,
@@ -76,6 +89,40 @@ export default function RevenuePage() {
                     growth: growth,
                     averageOrder: data.length > 0 ? total / data.length : 0
                 });
+
+                // --- CHART DATA CALCULATION (Last 12 Months) ---
+                const last12Months = [];
+                let maxAmount = 0;
+
+                for (let i = 11; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const monthName = d.toLocaleString('tr-TR', { month: 'short' });
+                    const monthIndex = d.getMonth();
+                    const year = d.getFullYear();
+
+                    const monthlySum = data
+                        .filter(t => {
+                            const tDate = new Date(t.created_at);
+                            return tDate.getMonth() === monthIndex && tDate.getFullYear() === year;
+                        })
+                        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+                    if (monthlySum > maxAmount) maxAmount = monthlySum;
+
+                    last12Months.push({
+                        month: monthName,
+                        amount: monthlySum,
+                        height: 0 // Will calculate after finding max
+                    });
+                }
+
+                // Normalize heights (0-100%)
+                const finalChartData = last12Months.map(item => ({
+                    ...item,
+                    height: maxAmount > 0 ? Math.round((item.amount / maxAmount) * 100) : 0
+                }));
+
+                setChartData(finalChartData);
             }
         } catch (err) {
             console.error(err);
@@ -83,6 +130,7 @@ export default function RevenuePage() {
             setLoading(false);
         }
     }
+
 
     if (loading) {
         return (
@@ -194,21 +242,33 @@ export default function RevenuePage() {
                         </div>
                     </div>
                 </div>
-                <div className="h-64 flex items-end gap-3 px-2">
-                    {[45, 60, 55, 70, 65, 80, 75, 90, 85, 95, 80, 100].map((h, i) => (
-                        <div key={i} className="flex-1 group relative h-full flex flex-col justify-end gap-1">
+                <div className="h-64 flex items-end gap-2 sm:gap-4 px-2">
+                    {chartData.length > 0 ? chartData.map((item, i) => (
+                        <div key={i} className="flex-1 group relative h-full flex flex-col justify-end gap-2">
+                            {/* Tooltip */}
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 px-2 py-1 rounded text-xs text-zinc-100 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                                {item.amount.toLocaleString('tr-TR')} ₺
+                            </div>
+
                             <motion.div
                                 initial={{ height: 0 }}
-                                animate={{ height: `${h * 0.3}%` }}
-                                className="w-full bg-blue-600/30 rounded-t-sm"
-                            />
-                            <motion.div
-                                initial={{ height: 0 }}
-                                animate={{ height: `${h * 0.7}%` }}
-                                className="w-full bg-emerald-600 rounded-t-sm group-hover:bg-emerald-500 transition-colors"
-                            />
+                                animate={{ height: `${item.height}%` }}
+                                className="w-full bg-blue-600 rounded-t-sm group-hover:bg-blue-500 transition-colors relative min-h-[4px]"
+                            >
+                                {item.height > 0 && (
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-white/20" />
+                                )}
+                            </motion.div>
+
+                            <span className="text-[10px] sm:text-xs text-zinc-400 text-center truncate w-full block">
+                                {item.month}
+                            </span>
                         </div>
-                    ))}
+                    )) : (
+                        <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
+                            Görüntülenecek veri yok
+                        </div>
+                    )}
                 </div>
             </Card>
 
