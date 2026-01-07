@@ -1,28 +1,22 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, Button } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import {
     Activity,
     Database,
     Zap,
-    ShieldCheck,
-    AlertCircle,
+    Lock,
+    HardDrive,
     Server,
     Clock,
-    CheckCircle2,
     RefreshCcw,
-    Lock,
-    Globe,
     Cpu,
-    Sparkles,
-    Terminal,
-    ChevronRight,
-    Wifi,
-    HardDrive,
-    HeartPulse,
-    Package
+    Network,
+    Globe,
+    ShieldCheck,
+    ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn, maskEmail } from '@/lib/utils';
@@ -41,6 +35,7 @@ export default function SystemHealthPage() {
     const [loading, setLoading] = useState(true);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [logs, setLogs] = useState<SystemLog[]>([]);
+    const [uptime, setUptime] = useState(100);
     const [healthMetrics, setHealthMetrics] = useState({
         dbResponseTime: 0,
         dbStatus: 'SCANNING',
@@ -55,11 +50,10 @@ export default function SystemHealthPage() {
         memoryPercent: 0,
     });
     const [networkInfo, setNetworkInfo] = useState({ effectiveType: 'unknown', downlink: 0, rtt: 0 });
-    const [realtimeStats, setRealtimeStats] = useState({ activeChannels: 0, status: 'disconnected' });
-    const [uptime, setUptime] = useState(100);
     const [externalApis, setExternalApis] = useState({
-        gemini: { status: 'STANDBY', responseTime: 0 },
-        resend: { status: 'STANDBY', responseTime: 0 },
+        gemini: { status: 'BEKLEMEDE', responseTime: 0 },
+        resend: { status: 'BEKLEMEDE', responseTime: 0 },
+        edge: { status: 'AKTİF', responseTime: 12 }
     });
 
     const supabase = createClient();
@@ -69,6 +63,17 @@ export default function SystemHealthPage() {
             const { data } = await supabase.from('system_logs').select('*').order('created_at', { ascending: false }).limit(15);
             if (data) setLogs(data as SystemLog[]);
         } catch (err) { console.error(err); }
+    }, [supabase]);
+
+    const calculateUptime = useCallback(async () => {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { count: errorCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true }).eq('event_type', 'error').gt('created_at', sevenDaysAgo);
+        const { count: totalCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true }).gt('created_at', sevenDaysAgo);
+        if (totalCount && totalCount > 0) {
+            setUptime(Number((((totalCount - (errorCount || 0)) / totalCount) * 100).toFixed(2)));
+        } else {
+            setUptime(100);
+        }
     }, [supabase]);
 
     const loadStabilityData = useCallback(async () => {
@@ -107,15 +112,6 @@ export default function SystemHealthPage() {
         } catch (err) { console.error(err); }
     }, [supabase]);
 
-    const calculateUptime = useCallback(async () => {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const { count: errorCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true }).eq('event_type', 'error').gt('created_at', sevenDaysAgo);
-        const { count: totalCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true }).gt('created_at', sevenDaysAgo);
-        if (totalCount && totalCount > 0) {
-            setUptime(Number((((totalCount - (errorCount || 0)) / totalCount) * 100).toFixed(2)));
-        }
-    }, [supabase]);
-
     const checkHealth = useCallback(async () => {
         setLoading(true);
         try {
@@ -129,28 +125,48 @@ export default function SystemHealthPage() {
 
             setHealthMetrics({
                 dbResponseTime,
-                dbStatus: dbResponseTime < 150 ? 'OPTIMAL' : 'DEGRADED',
-                authStatus: authError ? 'ERROR' : session ? 'AUTHENTICATED' : 'ANONYMOUS',
-                storageStatus: storageError ? 'ERROR' : 'OPERATIONAL',
+                dbStatus: dbResponseTime < 150 ? 'OPTIMAL' : 'YAVAŞ',
+                authStatus: authError ? 'HATA' : session ? 'AKTİF' : 'ANONİM',
+                storageStatus: storageError ? 'HATA' : 'AKTİF',
             });
 
             setResponseHistory(prev => [...prev, dbResponseTime].slice(-20));
 
+            // Real External Service Checks
             const checkApi = async (url: string) => {
                 try {
                     const s = performance.now();
                     const r = await fetch(url);
                     const e = performance.now();
-                    return { status: r.ok ? 'ONLINE' : 'ERROR', time: Math.round(e - s) };
-                } catch { return { status: 'ERROR', time: 0 }; }
+                    return { status: r.ok ? 'AKTİF' : 'HATA', time: Math.round(e - s) };
+                } catch { return { status: 'HATA', time: 0 }; }
             };
 
-            checkApi('/api/ai/health').then(r => setExternalApis(p => ({ ...p, gemini: { status: r.status, responseTime: r.time } })));
-            checkApi('/api/health/resend').then(r => setExternalApis(p => ({ ...p, resend: { status: r.status, responseTime: r.time } })));
-            
-            calculateUptime();
-            loadStabilityData();
-            loadRecentLogs();
+            // Edge Network Check (Self Ping)
+            const checkEdge = async () => {
+                try {
+                    const s = performance.now();
+                    await fetch('/', { method: 'HEAD', cache: 'no-store' });
+                    const e = performance.now();
+                    return { status: 'AKTİF', time: Math.round(e - s) };
+                } catch { return { status: 'HATA', time: 0 }; }
+            };
+
+            const [geminiRes, resendRes, edgeRes] = await Promise.all([
+                checkApi('/api/ai/health'),
+                checkApi('/api/health/resend'),
+                checkEdge()
+            ]);
+
+            setExternalApis({
+                gemini: { status: geminiRes.status, responseTime: geminiRes.time },
+                resend: { status: resendRes.status, responseTime: resendRes.time },
+                edge: { status: edgeRes.status, responseTime: edgeRes.time }
+            });
+
+            await calculateUptime();
+            await loadStabilityData();
+            await loadRecentLogs();
             setLastRefresh(new Date());
             setLoading(false);
         } catch (err) {
@@ -161,11 +177,12 @@ export default function SystemHealthPage() {
     useEffect(() => {
         checkHealth();
         const interval = setInterval(checkHealth, 30000);
+
         const metricsInterval = setInterval(() => {
             if (typeof window !== 'undefined' && (performance as any).memory) {
                 const m = (performance as any).memory;
-                setSystemMetrics({ 
-                    heapUsed: Math.round(m.usedJSHeapSize / 1048576), 
+                setSystemMetrics({
+                    heapUsed: Math.round(m.usedJSHeapSize / 1048576),
                     heapLimit: Math.round(m.jsHeapSizeLimit / 1048576),
                     memoryPercent: Math.round((m.usedJSHeapSize / m.jsHeapSizeLimit) * 100)
                 });
@@ -184,319 +201,277 @@ export default function SystemHealthPage() {
     }, [checkHealth]);
 
     return (
-        <div className="space-y-12 text-left text-white font-sans pb-20 relative w-full">
-            {/* 1. Header HUD */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-10 border-b border-white/[0.04] pb-12">
-                <div className="flex items-start gap-8">
-                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-[1.5rem] shadow-lg shadow-blue-500/5 relative overflow-hidden">
-                        <Activity className="w-10 h-10 text-blue-500 relative z-10" />
-                        <div className="absolute inset-0 bg-blue-500/5 animate-pulse" />
+        <div className="space-y-6 pb-20">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
+                        Sistem Sağlığı
+                    </h1>
+                    <div className="flex items-center gap-3 mt-1 text-sm text-zinc-400">
+                        <span className="flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" />
+                            {lastRefresh.toLocaleTimeString('tr-TR')}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1.5 text-green-500 font-medium">
+                            <ShieldCheck className="w-4 h-4" />
+                            %{uptime} Uptime
+                        </span>
+                    </div>
+                </div>
+                <Button
+                    onClick={checkHealth}
+                    variant="secondary"
+                    className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
+                >
+                    <RefreshCcw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
+                    Yeniden Tara
+                </Button>
+            </div>
+
+            {/* Status Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-green-600/10 text-green-500 rounded-lg">
+                            <Database className="w-5 h-5" />
+                        </div>
+                        <span className={cn(
+                            "text-xs font-medium px-2 py-1 rounded",
+                            healthMetrics.dbStatus === 'OPTIMAL' || healthMetrics.dbStatus === 'AKTİF'
+                                ? "bg-green-600/10 text-green-500"
+                                : "bg-red-600/10 text-red-500"
+                        )}>
+                            {healthMetrics.dbStatus}
+                        </span>
                     </div>
                     <div>
-                        <div className="flex items-center gap-4 mb-3">
-                            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
-                                SİSTEM <span className="text-blue-500">SAĞLIĞI</span>
-                            </h1>
-                            <div className="flex items-center gap-2.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Tüm Sistemler Kararlı</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-6 text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">
-                            <div className="flex items-center gap-2">
-                                <Clock className="w-3.5 h-3.5" /> SON TARAMA: {lastRefresh.toLocaleTimeString('tr-TR')}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Server className="w-3.5 h-3.5" /> SALON_KÜMESİ: EU-WEST-1
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button 
-                        onClick={checkHealth} 
-                        variant="secondary" 
-                        className="bg-zinc-950 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all rounded-xl h-14 px-8 font-black text-[10px] tracking-[0.3em] uppercase"
-                    >
-                        <RefreshCcw className={cn("w-4 h-4 mr-3", loading && "animate-spin")} />
-                        SİSTEMİ YENİDEN TARA
-                    </Button>
-                </div>
-            </div>
-
-            {/* 2. Status Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                {[
-                    { label: 'Veritabanı Erişimi', status: healthMetrics.dbStatus, icon: Database, color: 'text-emerald-500', desc: 'Sorgu Performansı' },
-                    { label: 'API Yanıt Hızı', status: `${healthMetrics.dbResponseTime}ms`, icon: Zap, color: 'text-amber-500', desc: 'Gidiş-Dönüş Süresi' },
-                    { label: 'Güvenlik Geçidi', status: healthMetrics.authStatus, icon: Lock, color: 'text-blue-500', desc: 'Kimlik Doğrulama' },
-                    { label: 'Bulut Depolama', status: healthMetrics.storageStatus, icon: HardDrive, color: 'text-purple-500', desc: 'Dosya Erişilebilirliği' },
-                ].map((m, i) => (
-                    <Card key={i} className="p-8 bg-zinc-950/20 border-white/[0.04] relative overflow-hidden group hover:border-blue-500/20 transition-all rounded-[2rem]">
-                         <div className="flex items-center justify-between mb-8">
-                            <div className={cn("p-3 bg-white/[0.03] border border-white/5 rounded-2xl group-hover:scale-110 transition-transform shadow-inner", m.color)}>
-                                <m.icon className="w-6 h-6" />
-                            </div>
-                            <div className={cn(
-                                "px-3 py-1 rounded-lg text-[10px] font-mono font-black uppercase tracking-widest border shadow-lg",
-                                m.status.includes('ERROR') || m.status.includes('CRITICAL') ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                            )}>
-                                {m.status}
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-1">{m.label}</p>
-                            <p className="text-[9px] font-mono text-zinc-700 uppercase tracking-widest">{m.desc}</p>
-                        </div>
-                    </Card>
-                ))}
-            </div>
-
-            {/* 3. Visual Analytics Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* System Stability Chart */}
-                <Card className="bg-zinc-950/20 border-white/[0.04] p-10 relative overflow-hidden rounded-[2.5rem]">
-                    <div className="flex items-center justify-between mb-12">
-                        <div className="flex items-center gap-5">
-                            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                                <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Sistem Kararlılığı</h3>
-                                <p className="text-[10px] text-zinc-600 mt-1 uppercase font-bold tracking-[0.3em]">SON 7 GÜN :: HATA DAĞILIMI</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-64 flex items-end gap-4 px-2 relative z-10">
-                        {stabilityData.map((day, i) => {
-                            const total = day.success + day.error;
-                            const successHeight = total > 0 ? (day.success / (total + 5)) * 100 : 5;
-                            const errorHeight = total > 0 ? (day.error / (total + 5)) * 100 : 0;
-                            
-                            return (
-                                <div key={i} className="flex-1 flex flex-col justify-end gap-1 group relative">
-                                    {day.error > 0 && (
-                                        <motion.div 
-                                            initial={{ height: 0 }}
-                                            animate={{ height: `${errorHeight}%` }}
-                                            className="w-full bg-red-500/40 rounded-t-sm"
-                                        />
-                                    )}
-                                    <motion.div 
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${successHeight}%` }}
-                                        className="w-full bg-emerald-500/20 group-hover:bg-emerald-500/40 transition-colors rounded-t-sm"
-                                    />
-                                    <p className="text-[8px] font-mono font-black text-zinc-800 uppercase mt-4 text-center">{day.date}</p>
-                                </div>
-                            );
-                        })}
+                        <p className="text-sm text-zinc-400">Veritabanı</p>
+                        <p className="text-xl font-bold text-zinc-100 mt-1">Bağlı</p>
                     </div>
                 </Card>
 
-                {/* Latency Telemetry Chart */}
-                <Card className="bg-zinc-950/20 border-white/[0.04] p-10 relative overflow-hidden rounded-[2.5rem]">
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-                    
-                    <div className="flex items-center justify-between mb-16 relative z-10">
-                        <div className="flex items-center gap-5">
-                            <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20">
-                                <Activity className="w-6 h-6 text-blue-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Gecikme Telemetrisi</h3>
-                                <p className="text-[10px] text-zinc-600 mt-1 uppercase font-bold tracking-[0.3em]">VERİTABANI GECİKMESİ :: SON 20 ÖRNEK</p>
-                            </div>
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-blue-600/10 text-blue-500 rounded-lg">
+                            <Zap className="w-5 h-5" />
                         </div>
-                        <div className="flex items-center gap-3 px-4 py-2 bg-zinc-950 border border-white/5 rounded-xl">
-                            <Wifi className="w-4 h-4 text-blue-500 animate-pulse" />
-                            <span className="text-[10px] font-mono font-black text-zinc-500 uppercase">Canlı</span>
+                        <span className="text-xs font-medium px-2 py-1 rounded bg-blue-600/10 text-blue-500">
+                            {healthMetrics.dbResponseTime}ms
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-sm text-zinc-400">API Yanıt Süresi</p>
+                        <p className="text-xl font-bold text-zinc-100 mt-1">Normal</p>
+                    </div>
+                </Card>
+
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-purple-600/10 text-purple-500 rounded-lg">
+                            <Lock className="w-5 h-5" />
+                        </div>
+                        <span className={cn(
+                            "text-xs font-medium px-2 py-1 rounded",
+                            healthMetrics.authStatus === 'AKTİF' ? "bg-green-600/10 text-green-500" : "bg-zinc-800 text-zinc-400"
+                        )}>
+                            {healthMetrics.authStatus}
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-sm text-zinc-400">Auth Servisi</p>
+                        <p className="text-xl font-bold text-zinc-100 mt-1">Çalışıyor</p>
+                    </div>
+                </Card>
+
+                <Card className="p-4 bg-zinc-800/50 border-zinc-700/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-orange-600/10 text-orange-500 rounded-lg">
+                            <HardDrive className="w-5 h-5" />
+                        </div>
+                        <span className={cn(
+                            "text-xs font-medium px-2 py-1 rounded",
+                            healthMetrics.storageStatus === 'AKTİF' ? "bg-green-600/10 text-green-500" : "bg-red-600/10 text-red-500"
+                        )}>
+                            {healthMetrics.storageStatus}
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-sm text-zinc-400">Depolama</p>
+                        <p className="text-xl font-bold text-zinc-100 mt-1">Erişilebilir</p>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Latency Chart */}
+                <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-600/10 text-blue-500 rounded-lg">
+                                <Activity className="w-5 h-5" />
+                            </div>
+                            <h3 className="font-semibold text-zinc-100">Gecikme Analizi</h3>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                            Canlı
                         </div>
                     </div>
 
-                    <div className="h-64 flex items-end gap-2 px-2 relative z-10">
+                    <div className="h-48 flex items-end gap-2">
                         {responseHistory.map((val, i) => {
                             const max = Math.max(...responseHistory, 200);
                             const height = (val / max) * 100;
                             return (
                                 <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
-                                    <motion.div 
+                                    <motion.div
                                         initial={{ height: 0 }}
                                         animate={{ height: `${Math.max(height, 5)}%` }}
                                         className={cn(
-                                            "w-full rounded-t-lg transition-all duration-500 shadow-lg",
-                                            val < 100 
-                                                ? 'bg-blue-500/30 group-hover:bg-blue-500 shadow-blue-500/10' 
-                                                : 'bg-amber-500/30 group-hover:bg-amber-500 shadow-amber-500/10'
+                                            "w-full rounded-t transition-all duration-300",
+                                            val < 100 ? 'bg-blue-600' : 'bg-orange-500'
                                         )}
                                     />
-                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 p-2.5 bg-zinc-950 border border-white/10 rounded-xl text-[10px] font-mono font-black text-white opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50 shadow-2xl">
-                                        {val} MS
+                                    <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-xs text-zinc-100 px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
+                                        {val}ms
                                     </div>
                                 </div>
                             );
                         })}
-                    </div>
-                    <div className="mt-10 pt-6 border-t border-white/[0.04] flex justify-between text-[10px] font-mono font-black text-zinc-800 uppercase tracking-[0.4em]">
-                        <span>T-EKSİ 10 DAKİKA</span>
-                        <span className="text-blue-500/40">Cerrahi Monitör v4.2</span>
-                        <span>BAĞLANTI KARARLI</span>
-                    </div>
-                </Card>
-            </div>
-
-            {/* 4. Sub-Systems & External Services HUD */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
-                <Card className="p-10 bg-zinc-950/20 border-white/[0.04] rounded-[2rem] relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
-                    <h4 className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-6">Bellek Ataması</h4>
-                    <div className="space-y-6">
-                         <div className="flex justify-between items-end">
-                            <p className="text-4xl font-black text-white tracking-tighter tabular-nums">{systemMetrics.heapUsed || '0'} <span className="text-sm text-zinc-800 font-mono">MB</span></p>
-                            <p className="text-[10px] font-mono font-black text-zinc-700">TOPLAM {systemMetrics.heapLimit || '0'} MB</p>
-                         </div>
-                         <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-                            <motion.div 
-                                animate={{ width: `${systemMetrics.memoryPercent || 0}%` }}
-                                className="h-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]"
-                            />
-                         </div>
-                    </div>
-                </Card>
-
-                <Card className="p-10 bg-zinc-950/20 border-white/[0.04] rounded-[2rem] relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-                    <h4 className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-6">Ağ Yığını</h4>
-                    <div className="grid grid-cols-2 gap-8">
-                        <div>
-                            <p className="text-[10px] font-black text-zinc-800 uppercase tracking-widest mb-2">İndirme</p>
-                            <p className="text-3xl font-black text-white tracking-tighter tabular-nums">{networkInfo.downlink || '0'} <span className="text-[10px] text-zinc-800 font-mono uppercase">Mb/s</span></p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-zinc-800 uppercase tracking-widest mb-2">Gecikme</p>
-                            <p className="text-3xl font-black text-white tracking-tighter tabular-nums">{networkInfo.rtt || '0'} <span className="text-[10px] text-zinc-800 font-mono uppercase">ms</span></p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-10 bg-zinc-950/20 border-white/[0.04] rounded-[2rem] relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/20 to-transparent" />
-                    <h4 className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] mb-6">Harici Servisler</h4>
-                    <div className="flex gap-4">
-                         {[
-                            { label: 'GEMINI', status: externalApis.gemini.status, time: `${externalApis.gemini.responseTime}ms` },
-                            { label: 'RESEND', status: externalApis.resend.status, time: `${externalApis.resend.responseTime}ms` },
-                            { label: 'EDGE', status: 'ONLINE', time: '12ms' },
-                         ].map((api, i) => (
-                             <div key={i} className="flex-1 bg-white/[0.02] border border-white/[0.04] p-3 rounded-xl group hover:border-orange-500/20 transition-all text-center">
-                                <p className="text-[10px] font-mono font-black text-zinc-500 group-hover:text-zinc-300 transition-colors uppercase">{api.label}</p>
-                                <p className="text-[9px] font-mono text-zinc-700 uppercase mt-1">{api.time}</p>
-                                <div className={cn(
-                                    "w-1 h-1 rounded-full mx-auto mt-2",
-                                    api.status === 'ONLINE' || api.status === 'ÇEVRİMİÇİ' ? 'bg-emerald-500' : 'bg-zinc-700'
-                                )} />
-                             </div>
-                         ))}
-                    </div>
-                </Card>
-            </div>
-
-            {/* 5. FULL WIDTH TERMINAL OUTPUT (Bottom) */}
-            <div className="space-y-6 w-full">
-                <div className="flex items-center justify-between px-4">
-                    <div className="flex items-center gap-4">
-                        <Terminal className="w-5 h-5 text-zinc-700" />
-                        <h2 className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.3em]">Sistem Olay Günlükleri</h2>
-                    </div>
-                    <Link href="/health/logs">
-                        <Button className="bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.05] text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.3em] h-10 px-6 rounded-xl transition-all">
-                            TÜM KAYITLARI İNCELE
-                        </Button>
-                    </Link>
-                </div>
-                <Card className="bg-[#020202] border-white/[0.04] min-h-[600px] flex flex-col rounded-[2rem] shadow-2xl relative overflow-hidden w-full">
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.005)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.005)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
-                    
-                    {/* Terminal Header Row */}
-                    <div className="bg-white/[0.02] px-8 py-3 border-b border-white/[0.04] flex items-center text-[10px] font-mono font-black text-zinc-700 uppercase tracking-[0.3em] relative z-10">
-                        <div className="w-32">Zaman</div>
-                        <div className="w-24">İşlem</div>
-                        <div className="flex-1 px-10">Olay Detayı</div>
-                        <div className="w-48 text-center">İşlemi Yapan</div>
-                        <div className="w-24 text-right">Durum</div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto divide-y divide-white/[0.02] hide-scrollbar relative z-10">
-                        {logs.length > 0 ? logs.map((log, i) => (
-                            <div key={i} className="flex items-center px-8 py-3.5 hover:bg-orange-500/[0.02] group transition-all duration-300 cursor-default border-l-2 border-transparent hover:border-orange-500/40">
-                                {/* Timestamp */}
-                                <div className="w-32 shrink-0 text-[11px] font-mono text-zinc-800 group-hover:text-zinc-500 transition-colors">
-                                    {format(new Date(log.created_at), 'HH:mm:ss:SSS')}
-                                </div>
-
-                                {/* Event Type */}
-                                <div className="w-24 shrink-0">
-                                    <span className={cn(
-                                        "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border",
-                                        log.event_type === 'success' ? 'text-emerald-500/60 border-emerald-500/10' : 'text-blue-500/60 border-blue-500/10'
-                                    )}>
-                                        {log.event_type === 'success' ? 'BAŞARILI' : 'BİLGİ'}
-                                    </span>
-                                </div>
-
-                                {/* Message */}
-                                <div className="flex-1 px-10 min-w-0">
-                                    <p className="text-[12px] font-mono font-medium text-zinc-500 group-hover:text-zinc-200 transition-colors truncate">
-                                        <span className="text-orange-500/30 mr-2">»</span>
-                                        {log.message}
-                                    </p>
-                                </div>
-
-                                {/* Actor */}
-                                <div className="w-48 shrink-0 text-center">
-                                    <span className="text-[10px] font-mono font-bold text-zinc-800 group-hover:text-zinc-600 transition-colors uppercase tracking-tight">
-                                        {log.user_email ? maskEmail(log.user_email) : 'SİSTEM_OTOMASYON'}
-                                    </span>
-                                </div>
-
-                                {/* Status Light */}
-                                <div className="w-24 shrink-0 flex justify-end items-center gap-3">
-                                    <span className={cn(
-                                        "text-[9px] font-black uppercase tracking-widest transition-colors",
-                                        log.event_type === 'success' ? 'text-emerald-500/40 group-hover:text-emerald-500' : 
-                                        log.event_type === 'error' ? 'text-red-500/40 group-hover:text-red-500' : 
-                                        'text-blue-500/40 group-hover:text-blue-500'
-                                    )}>
-                                        {log.event_type === 'success' ? 'ONAYLANDI' : 
-                                         log.event_type === 'error' ? 'BAŞARISIZ' : 'İŞLENDİ'}
-                                    </span>
-                                    <div className={cn(
-                                        "w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]",
-                                        log.event_type === 'success' ? 'text-emerald-500 bg-current' : 
-                                        log.event_type === 'error' ? 'text-red-500 bg-current' : 
-                                        'text-blue-500 bg-current'
-                                    )} />
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="h-full flex flex-col items-center justify-center py-40 opacity-5">
-                                <Terminal className="w-32 h-32 mb-6" />
-                                <p className="text-xl font-black uppercase tracking-[0.5em]">VERİ AKIŞI YOK</p>
+                        {responseHistory.length === 0 && (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
+                                Veri toplanıyor...
                             </div>
                         )}
                     </div>
-                    
-                    {/* Console Footer */}
-                    <div className="bg-white/[0.01] px-8 py-3 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono font-black text-zinc-800 uppercase tracking-[0.4em] relative z-10">
-                        <div className="flex gap-10">
-                            <span className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Bağlantı: Aktif</span>
-                            <span>Hafıza: Normal</span>
+                </Card>
+
+                {/* Sub Systems */}
+                <div className="grid grid-cols-1 gap-4">
+                    <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
+                        <h3 className="font-semibold text-zinc-100 mb-4 flex items-center gap-2">
+                            <Cpu className="w-4 h-4 text-zinc-400" />
+                            Sistem Kaynakları
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-zinc-400">Bellek Kullanımı</span>
+                                    <span className="text-zinc-100">{systemMetrics.heapUsed} / {systemMetrics.heapLimit} MB</span>
+                                </div>
+                                <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-blue-600 transition-all duration-500"
+                                        style={{ width: `${systemMetrics.memoryPercent}%` }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50">
+                                    <p className="text-xs text-zinc-400">İndirme Hızı</p>
+                                    <p className="text-lg font-bold text-zinc-100">{networkInfo.downlink} Mbps</p>
+                                </div>
+                                <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50">
+                                    <p className="text-xs text-zinc-400">Ağ Gecikmesi</p>
+                                    <p className="text-lg font-bold text-zinc-100">{networkInfo.rtt} ms</p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="w-2 h-4 bg-orange-500 animate-pulse shadow-[0_0_15px_orange]" />
-                            <span>KÜRESEL TELEMETRİ AKIŞI BEKLENİYOR...</span>
+                    </Card>
+
+                    <Card className="p-6 bg-zinc-800/50 border-zinc-700/50">
+                        <h3 className="font-semibold text-zinc-100 mb-4 flex items-center gap-2">
+                            <Network className="w-4 h-4 text-zinc-400" />
+                            Harici Servisler
+                        </h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="flex flex-col items-center justify-center p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50 text-center">
+                                <Globe className="w-4 h-4 text-zinc-400 mb-2" />
+                                <p className="text-xs font-medium text-zinc-100">Edge Network</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                    <span className="text-[10px] text-zinc-500">Aktif</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center justify-center p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50 text-center">
+                                <Cpu className="w-4 h-4 text-zinc-400 mb-2" />
+                                <p className="text-xs font-medium text-zinc-100">Gemini AI</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                    <div className={cn("w-1.5 h-1.5 rounded-full", externalApis.gemini.status === 'AKTİF' ? "bg-green-500" : "bg-orange-500")} />
+                                    <span className="text-[10px] text-zinc-500">{externalApis.gemini.responseTime}ms</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center justify-center p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50 text-center">
+                                <Zap className="w-4 h-4 text-zinc-400 mb-2" />
+                                <p className="text-xs font-medium text-zinc-100">Resend</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                    <div className={cn("w-1.5 h-1.5 rounded-full", externalApis.resend.status === 'AKTİF' ? "bg-green-500" : "bg-orange-500")} />
+                                    <span className="text-[10px] text-zinc-500">{externalApis.resend.responseTime}ms</span>
+                                </div>
+                            </div>
                         </div>
+                    </Card>
+                </div>
+            </div>
+
+            {/* Logs Section */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-zinc-100">Sistem Günlükleri</h2>
+                    <Link href="/health/logs">
+                        <Button variant="ghost" className="text-zinc-400 hover:text-zinc-100">
+                            Tümünü Gör <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    </Link>
+                </div>
+
+                <Card className="overflow-hidden bg-zinc-800/50 border-zinc-700/50">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-zinc-900/50 text-zinc-400 border-b border-zinc-700/50">
+                                <tr>
+                                    <th className="px-6 py-3 font-medium">Zaman</th>
+                                    <th className="px-6 py-3 font-medium">Durum</th>
+                                    <th className="px-6 py-3 font-medium">Mesaj</th>
+                                    <th className="px-6 py-3 font-medium">Kullanıcı</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-700/50">
+                                {logs.length > 0 ? logs.map((log) => (
+                                    <tr key={log.id} className="hover:bg-zinc-700/10 transition-colors">
+                                        <td className="px-6 py-4 text-zinc-400 font-mono text-xs">
+                                            {format(new Date(log.created_at), 'HH:mm:ss')}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={cn(
+                                                "px-2 py-1 rounded text-xs font-medium",
+                                                log.event_type === 'success' ? "bg-green-600/10 text-green-500" :
+                                                    log.event_type === 'error' ? "bg-red-600/10 text-red-500" :
+                                                        "bg-blue-600/10 text-blue-500"
+                                            )}>
+                                                {log.event_type === 'success' ? 'Başarılı' :
+                                                    log.event_type === 'error' ? 'Hata' : 'Bilgi'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-zinc-200">
+                                            {log.message}
+                                        </td>
+                                        <td className="px-6 py-4 text-zinc-400 text-xs">
+                                            {log.user_email ? maskEmail(log.user_email) : 'Sistem'}
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">
+                                            Kayıt bulunamadı.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </Card>
             </div>

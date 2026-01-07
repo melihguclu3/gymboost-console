@@ -35,7 +35,7 @@ export default function SuperAdminGyms() {
     const [showInviteSuccess, setShowInviteSuccess] = useState(false);
     const [generatedLink, setGeneratedLink] = useState('');
     const [editingGym, setEditingGym] = useState<any>(null);
-    const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', status: 'active' });
+    const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', status: 'active', notificationEmail: '' });
     const [actionLoading, setActionLoading] = useState(false);
 
     const supabase = createClient();
@@ -82,7 +82,11 @@ export default function SuperAdminGyms() {
                     email: form.email,
                     phone: form.phone,
                     address: form.address,
-                    settings: { ...editingGym.settings, status: form.status }
+                    settings: {
+                        ...editingGym.settings,
+                        status: form.status,
+                        notification_email: form.notificationEmail
+                    }
                 }).eq('id', editingGym.id);
                 if (error) throw error;
                 toast.success('Salon güncellendi.');
@@ -94,7 +98,8 @@ export default function SuperAdminGyms() {
                     settings: {
                         status: 'pending_activation',
                         activation_token: activationToken,
-                        is_activated: false
+                        is_activated: false,
+                        notification_email: form.notificationEmail
                     }
                 }).select().single();
                 if (gymError) throw gymError;
@@ -161,7 +166,7 @@ export default function SuperAdminGyms() {
                         {showArchived ? 'Aktifleri Göster' : 'Arşivi Göster'}
                     </Button>
                     <Button
-                        onClick={() => { setEditingGym(null); setForm({ name: '', email: '', phone: '', address: '', status: 'active' }); setShowModal(true); }}
+                        onClick={() => { setEditingGym(null); setForm({ name: '', email: '', phone: '', address: '', status: 'active', notificationEmail: '' }); setShowModal(true); }}
                         variant="primary"
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
@@ -227,7 +232,8 @@ export default function SuperAdminGyms() {
                                                 email: gym.email || '',
                                                 phone: gym.phone || '',
                                                 address: gym.address || '',
-                                                status: gym.settings?.status || 'active'
+                                                status: gym.settings?.status || 'active',
+                                                notificationEmail: gym.settings?.notification_email || ''
                                             });
                                             setShowModal(true);
                                         }}
@@ -291,20 +297,37 @@ export default function SuperAdminGyms() {
                             </div>
 
                             <form onSubmit={handleSave} className="space-y-4">
-                                <div>
-                                    <label className="text-sm font-medium text-zinc-300 mb-2 block">Salon Adı</label>
-                                    <input
-                                        value={form.name}
-                                        onChange={e => setForm({ ...form, name: e.target.value })}
-                                        className="w-full h-11 bg-zinc-900 border border-zinc-700 rounded-lg px-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                                        placeholder="Örn: Elite Fitness"
-                                    />
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-zinc-300 mb-2 block">Salon Adı</label>
+                                        <input
+                                            value={form.name}
+                                            onChange={e => setForm({ ...form, name: e.target.value })}
+                                            className="w-full h-11 bg-zinc-900 border border-zinc-700 rounded-lg px-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                                            placeholder="Örn: Elite Fitness"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-zinc-300 mb-2 block">
+                                            Ödeme Bildirim E-postası
+                                            <span className="text-zinc-500 text-xs font-normal ml-2">(Opsiyonel)</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={form.notificationEmail}
+                                            onChange={e => setForm({ ...form, notificationEmail: e.target.value })}
+                                            className="w-full h-11 bg-zinc-900 border border-zinc-700 rounded-lg px-4 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                                            placeholder="odeme@salon.com"
+                                        />
+                                        <p className="text-[10px] text-zinc-500 mt-1">Stripe ödemelerinde bu adrese bilgi gider.</p>
+                                    </div>
                                 </div>
 
                                 {editingGym && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-sm font-medium text-zinc-300 mb-2 block">E-posta</label>
+                                            <label className="text-sm font-medium text-zinc-300 mb-2 block">İletişim E-posta</label>
                                             <input
                                                 value={form.email}
                                                 onChange={e => setForm({ ...form, email: e.target.value })}
