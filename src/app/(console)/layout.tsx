@@ -14,7 +14,8 @@ import {
     Menu,
     X,
     Activity,
-    Package
+    Package,
+    MessageSquare
 } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -70,6 +71,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
         { title: 'Üyeler', icon: Users, href: '/users' },
         { title: 'Envanter', icon: Package, href: '/inventory' },
         { title: 'Gelir', icon: CreditCard, href: '/revenue' },
+        { title: 'Geri Bildirimler', icon: MessageSquare, href: '/feedback' },
         { title: 'Sistem Sağlığı', icon: Activity, href: '/health' },
         { title: 'Ayarlar', icon: Settings, href: '/settings' },
     ];
